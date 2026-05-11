@@ -223,6 +223,7 @@ CREATE TABLE public.users (
     last_name character varying(100),
     reset_token text,
     reset_token_expires timestamp with time zone,
+    role character varying(50) DEFAULT 'user'::character varying,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP
 );

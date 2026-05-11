@@ -1,27 +1,63 @@
-const jwt = require('jsonwebtoken');
+const express = require("express");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const pool = require("../config/database");
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const router = express.Router();
 
-const authMiddleware = (req, res, next) => {
-    const token = req.headers.authorization?.split(' ')[1];
-    
-    if (!token) {
-        return res.status(401).json({ 
-            success: false, 
-            error: 'No token provided' 
-        });
+const JWT_SECRET =
+  process.env.JWT_SECRET || "egyptholiday_secret_key_2026";
+
+router.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const result = await pool.query(
+      "SELECT * FROM users WHERE email = $1",
+      [email]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: "Invalid email or password" });
     }
-    
-    try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        req.user = decoded;
-        next();
-    } catch (error) {
-        return res.status(401).json({ 
-            success: false, 
-            error: 'Invalid or expired token' 
-        });
-    }
-};
 
-module.exports = authMiddleware;
+    const user = result.rows[0];
+
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      return res.status(401).json({ error: "Invalid email or password" });
+    }
+
+    const role = user.role || "user";
+
+    const token = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        role,
+      },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        name: `${user.first_name || ""} ${user.last_name || ""}`.trim(),
+        email: user.email,
+        phone: user.phone || "",
+        city: user.city || "Mansoura",
+        country: user.country || "Egypt",
+        avatar: user.avatar || "",
+        role,
+      },
+    });
+  } catch (error) {
+    console.log("LOGIN ERROR:", error.message);
+    res.status(500).json({ error: "Login server error" });
+  }
+});
+
+module.exports = router;
