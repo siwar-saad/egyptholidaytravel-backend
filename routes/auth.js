@@ -130,14 +130,16 @@ router.post("/login", async (req, res) => {
       token,
       user: {
         id: user.id,
-        name: `${user.first_name || ""} ${user.last_name || ""}`.trim(),
+        name:
+          `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
+          user.email.split("@")[0],
         email: user.email,
         phone: user.phone || "",
         city: user.city || "Mansoura",
         country: user.country || "Egypt",
         avatar: user.avatar || "",
         role,
-      },
+      }
     });
   } catch (error) {
     console.log("LOGIN ERROR:", error.message);
