@@ -159,16 +159,19 @@ router.get("/clients", async (req, res) => {
       ORDER BY id DESC
     `);
 
-    const clients = result.rows.map((user) => ({
-      id: user.id,
-      name: `${user.first_name || ""} ${user.last_name || ""}`.trim() || "Client",
-      email: user.email,
-      phone: user.phone || "No phone",
-    }));
-
-    res.json(clients);
+    res.json(
+      result.rows.map((user) => ({
+        id: user.id,
+        name:
+          `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
+          "Client",
+        email: user.email || "No email",
+        phone: user.phone || "No phone",
+      }))
+    );
   } catch (err) {
-    res.status(500).json({ error: "Clients error" });
+    console.log("CLIENTS ERROR:", err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 
