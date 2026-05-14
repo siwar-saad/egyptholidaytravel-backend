@@ -11,6 +11,8 @@ const packageRoutes = require("./routes/packages");
 const subscriberRoutes = require("./routes/subscribers");
 const bookingRoutes = require("./routes/bookings");
 const messageRoutes = require("./routes/messages");
+const hotelRoutes = require("./routes/hotels");
+
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -28,6 +30,7 @@ app.use("/api/packages", packageRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api", subscriberRoutes);
+app.use("/api/hotels", hotelRoutes);
 
 app.get("/", (req, res) => {
   res.json({ message: "Egypt Holiday API is running" });
