@@ -1,6 +1,20 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../config/database");
+const { sendEmail } = require("../services/emailService");
+const authMiddleware = require("../middleware/authMiddleware");
+
+router.use(authMiddleware);
+
+router.use((req, res, next) => {
+  if (!req.user || req.user.role !== "admin") {
+    return res.status(403).json({
+      error: "Access denied. Admin only.",
+    });
+  }
+
+  next();
+});
 
 // DASHBOARD
 router.get("/dashboard", async (req, res) => {
@@ -23,7 +37,6 @@ router.get("/dashboard", async (req, res) => {
 
 // ==================== PACKAGES ====================
 
-// GET all packages
 router.get("/packages", async (req, res) => {
   try {
     const result = await pool.query(`
@@ -47,7 +60,6 @@ router.get("/packages", async (req, res) => {
   }
 });
 
-// ADD package
 router.post("/packages", async (req, res) => {
   try {
     const { name, title, programme, price, visibility, image } = req.body;
@@ -59,14 +71,14 @@ router.post("/packages", async (req, res) => {
         error: "name/title, programme and price are required",
       });
     }
+
     const cleanPrice = String(price).replace(/[^\d.]/g, "");
     const numericPrice = Number(cleanPrice);
 
     if (Number.isNaN(numericPrice)) {
-      return res.status(400).json({
-        error: "Invalid price",
-      });
+      return res.status(400).json({ error: "Invalid price" });
     }
+
     const result = await pool.query(
       `
       INSERT INTO packages 
@@ -91,13 +103,17 @@ router.post("/packages", async (req, res) => {
   }
 });
 
-// UPDATE package
 router.put("/packages/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const { name, title, programme, price, visibility, image } = req.body;
 
     const packageName = name || title;
+
+    const cleanPrice =
+      price !== undefined && price !== null
+        ? Number(String(price).replace(/[^\d.]/g, ""))
+        : null;
 
     const result = await pool.query(
       `
@@ -113,7 +129,7 @@ router.put("/packages/:id", async (req, res) => {
       WHERE id = $6
       RETURNING *
       `,
-      [packageName, programme, price, visibility, image, id]
+      [packageName, programme, cleanPrice, visibility, image, id]
     );
 
     if (result.rows.length === 0) {
@@ -127,13 +143,13 @@ router.put("/packages/:id", async (req, res) => {
   }
 });
 
-// UPDATE package visibility
 router.put("/packages/:id/visibility", async (req, res) => {
   try {
     const { id } = req.params;
-    const { visibility } = req.body;
+    let { visibility } = req.body;
 
-    if (!["Public", "Private"].includes(visibility)) {
+    if (visibility === "Public") visibility = "Published";
+    if (!["Published", "Private"].includes(visibility)) {
       return res.status(400).json({ error: "Invalid visibility" });
     }
 
@@ -158,7 +174,6 @@ router.put("/packages/:id/visibility", async (req, res) => {
   }
 });
 
-// DELETE package
 router.delete("/packages/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -184,18 +199,26 @@ router.delete("/packages/:id", async (req, res) => {
 router.get("/reservations", async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id, status, search_params, customer_info, created_at
+      SELECT id, status, search_params, customer_info, created_at, booking_type
       FROM bookings
+      WHERE booking_type IS NULL OR booking_type = 'package'
       ORDER BY created_at DESC
     `);
 
     const reservations = result.rows.map((b) => ({
       id: b.id,
-      name: b.customer_info?.name || b.customer_info?.firstName || b.customer_info?.email || "Unknown",
-      packageName: b.search_params?.to || b.search_params?.destination || "N/A",
+      name:
+        b.customer_info?.name ||
+        b.customer_info?.firstName ||
+        b.customer_info?.email ||
+        "Unknown",
+      packageName:
+        b.search_params?.to ||
+        b.search_params?.destination ||
+        "N/A",
       date: b.created_at?.toISOString().split("T")[0],
       status: b.status || "Pending",
-      type: "package"
+      type: "package",
     }));
 
     res.json(reservations);
@@ -231,6 +254,48 @@ router.put("/reservations/:id/status", async (req, res) => {
   }
 });
 
+// ==================== HOTEL RESERVATIONS ====================
+
+router.get("/hotels/reservations", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT *
+      FROM bookings
+      WHERE booking_type = 'hotel'
+      ORDER BY created_at DESC
+    `);
+
+    res.json(
+      result.rows.map((b) => ({
+        id: b.id,
+        type: "hotel",
+        client:
+          b.customer_info?.name ||
+          b.customer_info?.fullName ||
+          b.customer_info?.email ||
+          "Unknown",
+        hotelName:
+          b.selected_hotel?.name ||
+          b.selected_hotel?.hotelName ||
+          "Unknown Hotel",
+        checkIn:
+          b.selected_hotel?.checkIn ||
+          b.customer_info?.checkIn ||
+          "",
+        checkOut:
+          b.selected_hotel?.checkOut ||
+          b.customer_info?.checkOut ||
+          "",
+        status: b.status || "Pending",
+        date: b.created_at?.toISOString().split("T")[0],
+      }))
+    );
+  } catch (err) {
+    console.error("Admin hotel reservations error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ==================== CLIENTS ====================
 
 router.get("/clients", async (req, res) => {
@@ -244,7 +309,9 @@ router.get("/clients", async (req, res) => {
     res.json(
       result.rows.map((user) => ({
         id: user.id,
-        name: `${user.first_name || ""} ${user.last_name || ""}`.trim() || "Client",
+        name:
+          `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
+          "Client",
         email: user.email || "No email",
         phone: user.phone || "No phone",
       }))
@@ -271,7 +338,7 @@ router.get("/payments", async (req, res) => {
       client: p.customer_info?.name || p.customer_info?.email || "Unknown",
       amount: p.total_price ? `$${p.total_price}` : "$0",
       status: p.status === "Confirmed" ? "Paid" : "Not Paid",
-      date: p.created_at?.toISOString().split("T")[0]
+      date: p.created_at?.toISOString().split("T")[0],
     }));
 
     res.json(payments);
@@ -283,39 +350,52 @@ router.get("/payments", async (req, res) => {
 
 // ==================== MESSAGES ====================
 
+/* GET ALL MESSAGES */
 router.get("/messages", async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id, name, email, message, reply, created_at
+      SELECT *
       FROM messages
       ORDER BY created_at DESC
     `);
 
-    const messages = result.rows.map((msg) => ({
-      id: msg.id,
-      name: msg.name,
-      email: msg.email,
-      message: msg.message,
-      reply: msg.reply || "",
-      date: msg.created_at?.toISOString().split("T")[0],
-    }));
+    res.json(
+      result.rows.map((msg) => ({
+        id: msg.id,
+        name: msg.name,
+        email: msg.email,
+        message: msg.message,
+        reply: msg.reply || "",
+        date: msg.created_at
+          ? new Date(msg.created_at).toISOString().split("T")[0]
+          : "Today",
+      }))
+    );
+  } catch (error) {
+    console.log("Get messages error:", error.message);
 
-    res.json(messages);
-  } catch (err) {
-    console.error("Messages error:", err);
-    res.status(500).json({ error: "Messages error" });
+    res.status(500).json({
+      error: error.message,
+    });
   }
 });
 
+/* REPLY TO MESSAGE */
 router.put("/messages/:id/reply", async (req, res) => {
   try {
-    const { reply } = req.body;
     const { id } = req.params;
+    const { reply } = req.body;
+
+    if (!reply || !reply.trim()) {
+      return res.status(400).json({
+        error: "Reply is required",
+      });
+    }
 
     const result = await pool.query(
       `
       UPDATE messages
-      SET reply = $1, updated_at = CURRENT_TIMESTAMP
+      SET reply = $1
       WHERE id = $2
       RETURNING *
       `,
@@ -323,54 +403,23 @@ router.put("/messages/:id/reply", async (req, res) => {
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Message not found" });
+      return res.status(404).json({
+        error: "Message not found",
+      });
     }
 
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error("Reply error:", err);
-    res.status(500).json({ error: "Reply error" });
+    res.json({
+      success: true,
+      message: "Reply saved successfully",
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.log("Reply message error:", error.message);
+
+    res.status(500).json({
+      error: error.message,
+    });
   }
-  // ==================== HOTEL RESERVATIONS ====================
-
-  router.get("/hotels/reservations", async (req, res) => {
-    try {
-      const result = await pool.query(`
-      SELECT id, status, selected_hotel, customer_info, total_price, created_at
-      FROM bookings
-      WHERE booking_type = 'hotel'
-      ORDER BY created_at DESC
-    `);
-
-      const hotelReservations = result.rows.map((b) => ({
-        id: b.id,
-        hotelName:
-          b.selected_hotel?.name ||
-          b.selected_hotel?.hotelName ||
-          "Unknown hotel",
-        city:
-          b.selected_hotel?.city ||
-          b.selected_hotel?.destination ||
-          "N/A",
-        client:
-          b.customer_info?.name ||
-          b.customer_info?.firstName ||
-          b.customer_info?.email ||
-          "Unknown",
-        email: b.customer_info?.email || "",
-        phone: b.customer_info?.phone || "",
-        amount: b.total_price || 0,
-        status: b.status || "Pending",
-        date: b.created_at?.toISOString().split("T")[0],
-        type: "hotel",
-      }));
-
-      res.json(hotelReservations);
-    } catch (err) {
-      console.error("Hotel reservations admin error:", err);
-      res.status(500).json({ error: err.message });
-    }
-  });
 });
 
 module.exports = router;

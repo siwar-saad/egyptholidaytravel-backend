@@ -6,8 +6,11 @@ const pool = require("../config/database");
 const { sendEmail } = require("../services/emailService");
 const router = express.Router();
 
-const JWT_SECRET = process.env.JWT_SECRET || "egyptholiday_secret_key_2026";
+const JWT_SECRET = process.env.JWT_SECRET;
 
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET is missing in environment variables");
+}
 // SIGN UP
 router.post("/signup", async (req, res) => {
   try {
