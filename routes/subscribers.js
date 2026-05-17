@@ -1,77 +1,49 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../config/database");
+const adminMiddleware = require("../middleware/adminMiddleware");
 
-// POST /api/subscribers
+/* PUBLIC: subscribe */
 router.post("/subscribers", async (req, res) => {
-  const { email } = req.body;
-
-  if (!email) {
-    return res.status(400).json({
-      success: false,
-      error: "Email is required",
-    });
-  }
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-  if (!emailRegex.test(email)) {
-    return res.status(400).json({
-      success: false,
-      error: "Invalid email format",
-    });
-  }
-
   try {
-    const ipAddress =
-      req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+    const { email } = req.body;
 
-    const userAgent = req.headers["user-agent"];
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
 
     const result = await pool.query(
       `
-      INSERT INTO subscribers
-      (email, ip_address, user_agent, status)
-      VALUES ($1, $2, $3, 'active')
-      ON CONFLICT (email)
-      DO UPDATE SET
-        status = 'active',
-        updated_at = CURRENT_TIMESTAMP
-      RETURNING id, email, subscribed_at, status
+      INSERT INTO subscribers (email)
+      VALUES ($1)
+      RETURNING *
       `,
-      [email.toLowerCase(), ipAddress, userAgent]
+      [email]
     );
 
     res.status(201).json({
       success: true,
-      message: "Successfully subscribed to our newsletter!",
       subscriber: result.rows[0],
     });
   } catch (error) {
-    console.error("Subscribe error:", error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
+    console.error("Subscribe error:", error.message);
+    res.status(500).json({ error: "Subscribe error" });
   }
 });
 
-// GET /api/admin/subscribers
-router.get("/admin/subscribers", async (req, res) => {
+/* ADMIN ONLY: get all subscribers */
+router.get("/subscribers", adminMiddleware, async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id, email, subscribed_at, status
+      SELECT *
       FROM subscribers
-      ORDER BY subscribed_at DESC
+      ORDER BY created_at DESC
     `);
 
     res.json(result.rows);
   } catch (error) {
-    console.error("Get subscribers error:", error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
+    console.error("Get subscribers error:", error.message);
+    res.status(500).json({ error: "Get subscribers error" });
   }
 });
 

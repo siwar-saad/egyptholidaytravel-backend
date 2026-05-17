@@ -12,6 +12,10 @@ const initializeDatabase = async () => {
         first_name VARCHAR(100),
         last_name VARCHAR(100),
         phone VARCHAR(50),
+        city VARCHAR(100),
+        country VARCHAR(100) DEFAULT 'Egypt',
+        avatar TEXT,
+        role VARCHAR(20) DEFAULT 'user',
         reset_token TEXT,
         reset_token_expires TIMESTAMP WITH TIME ZONE,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -39,6 +43,7 @@ const initializeDatabase = async () => {
         programme TEXT,
         price VARCHAR(100),
         pdf_status VARCHAR(50) DEFAULT 'Missing',
+        visibility VARCHAR(50) DEFAULT 'Private',
         image TEXT,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
@@ -80,6 +85,18 @@ const initializeDatabase = async () => {
       );
     `);
 
+    await pool.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS city VARCHAR(100);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT 'Egypt';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';
+
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS programme TEXT;
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS price VARCHAR(100);
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS pdf_status VARCHAR(50) DEFAULT 'Missing';
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS visibility VARCHAR(50) DEFAULT 'Private';
+    `);
+
     for (const dest of Object.values(destinations)) {
       await pool.query(
         `
@@ -108,25 +125,7 @@ const initializeDatabase = async () => {
         [pkg.title, pkg.image]
       );
     }
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS packages (
-        id SERIAL PRIMARY KEY,
-        title VARCHAR(255) NOT NULL,
-        programme TEXT,
-        price VARCHAR(100),
-        visibility VARCHAR(50) DEFAULT 'Private',
-        image TEXT,
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-    await pool.query(`
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS city VARCHAR(100);
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT 'Egypt';
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT;
-    `);
-    await pool.query(`
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';
-    `);
+
     console.log("✅ Database initialized successfully");
   } catch (error) {
     console.error("❌ Database initialization error:", error.message);

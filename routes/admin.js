@@ -1,28 +1,35 @@
 const express = require("express");
 const router = express.Router();
+
 const pool = require("../config/database");
 const { sendEmail } = require("../services/emailService");
-const authMiddleware = require("../middleware/authMiddleware");
 
-router.use(authMiddleware);
+const adminMiddleware = require("../middleware/adminMiddleware");
 
-router.use((req, res, next) => {
-  if (!req.user || req.user.role !== "admin") {
-    return res.status(403).json({
-      error: "Access denied. Admin only.",
-    });
-  }
+/* Protect all admin routes */
+router.use(adminMiddleware);
 
-  next();
-});
+/* =======================================================
+   DASHBOARD
+======================================================= */
 
-// DASHBOARD
 router.get("/dashboard", async (req, res) => {
   try {
-    const packagesCount = await pool.query("SELECT COUNT(*) FROM packages");
-    const reservationsCount = await pool.query("SELECT COUNT(*) FROM bookings");
-    const clientsCount = await pool.query("SELECT COUNT(*) FROM users");
-    const messagesCount = await pool.query("SELECT COUNT(*) FROM messages");
+    const packagesCount = await pool.query(
+      "SELECT COUNT(*) FROM packages"
+    );
+
+    const reservationsCount = await pool.query(
+      "SELECT COUNT(*) FROM bookings"
+    );
+
+    const clientsCount = await pool.query(
+      "SELECT COUNT(*) FROM users"
+    );
+
+    const messagesCount = await pool.query(
+      "SELECT COUNT(*) FROM messages"
+    );
 
     res.json({
       packages: Number(packagesCount.rows[0].count),
@@ -30,147 +37,133 @@ router.get("/dashboard", async (req, res) => {
       clients: Number(clientsCount.rows[0].count),
       messages: Number(messagesCount.rows[0].count),
     });
-  } catch (err) {
-    res.status(500).json({ error: "Dashboard error" });
+  } catch (error) {
+    console.error("Dashboard error:", error);
+
+    res.status(500).json({
+      error: "Unable to load dashboard",
+    });
   }
 });
 
-// ==================== PACKAGES ====================
+/* =======================================================
+   PACKAGES
+======================================================= */
 
 router.get("/packages", async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT 
-        id,
-        COALESCE(name, title) AS name,
-        title,
-        programme,
-        price,
-        COALESCE(visibility, 'Private') AS visibility,
-        image,
-        created_at
+      SELECT *
       FROM packages
       ORDER BY id DESC
     `);
 
     res.json(result.rows);
-  } catch (err) {
-    console.error("GET packages error:", err);
-    res.status(500).json({ error: err.message });
+  } catch (error) {
+    console.error("Get packages error:", error);
+
+    res.status(500).json({
+      error: "Unable to get packages",
+    });
   }
 });
 
 router.post("/packages", async (req, res) => {
   try {
-    const { name, title, programme, price, visibility, image } = req.body;
+    const {
+      name,
+      programme,
+      price,
+      visibility,
+      image,
+    } = req.body;
 
-    const packageName = name || title;
-
-    if (!packageName || !programme || !price) {
+    if (!name || !programme || !price) {
       return res.status(400).json({
-        error: "name/title, programme and price are required",
+        error: "Missing required fields",
       });
-    }
-
-    const cleanPrice = String(price).replace(/[^\d.]/g, "");
-    const numericPrice = Number(cleanPrice);
-
-    if (Number.isNaN(numericPrice)) {
-      return res.status(400).json({ error: "Invalid price" });
     }
 
     const result = await pool.query(
       `
-      INSERT INTO packages 
-      (name, title, programme, price, visibility, image)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO packages
+      (
+        name,
+        programme,
+        price,
+        visibility,
+        image
+      )
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING *
       `,
       [
-        packageName,
-        packageName,
+        name,
         programme,
-        numericPrice,
+        price,
         visibility || "Private",
         image || "",
       ]
     );
 
     res.status(201).json(result.rows[0]);
-  } catch (err) {
-    console.error("ADD package error:", err);
-    res.status(500).json({ error: err.message });
+  } catch (error) {
+    console.error("Create package error:", error);
+
+    res.status(500).json({
+      error: "Unable to create package",
+    });
   }
 });
 
 router.put("/packages/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, title, programme, price, visibility, image } = req.body;
 
-    const packageName = name || title;
-
-    const cleanPrice =
-      price !== undefined && price !== null
-        ? Number(String(price).replace(/[^\d.]/g, ""))
-        : null;
+    const {
+      name,
+      programme,
+      price,
+      visibility,
+      image,
+    } = req.body;
 
     const result = await pool.query(
       `
       UPDATE packages
-      SET 
-        name = COALESCE($1, name),
-        title = COALESCE($1, title),
-        programme = COALESCE($2, programme),
-        price = COALESCE($3, price),
-        visibility = COALESCE($4, visibility),
-        image = COALESCE($5, image),
+      SET
+        name = $1,
+        programme = $2,
+        price = $3,
+        visibility = $4,
+        image = $5,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = $6
       RETURNING *
       `,
-      [packageName, programme, cleanPrice, visibility, image, id]
+      [
+        name,
+        programme,
+        price,
+        visibility,
+        image,
+        id,
+      ]
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Package not found" });
+      return res.status(404).json({
+        error: "Package not found",
+      });
     }
 
     res.json(result.rows[0]);
-  } catch (err) {
-    console.error("UPDATE package error:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
+  } catch (error) {
+    console.error("Update package error:", error);
 
-router.put("/packages/:id/visibility", async (req, res) => {
-  try {
-    const { id } = req.params;
-    let { visibility } = req.body;
-
-    if (visibility === "Public") visibility = "Published";
-    if (!["Published", "Private"].includes(visibility)) {
-      return res.status(400).json({ error: "Invalid visibility" });
-    }
-
-    const result = await pool.query(
-      `
-      UPDATE packages
-      SET visibility = $1, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $2
-      RETURNING *
-      `,
-      [visibility, id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Package not found" });
-    }
-
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error("UPDATE visibility error:", err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      error: "Unable to update package",
+    });
   }
 });
 
@@ -179,64 +172,78 @@ router.delete("/packages/:id", async (req, res) => {
     const { id } = req.params;
 
     const result = await pool.query(
-      "DELETE FROM packages WHERE id = $1 RETURNING id",
+      `
+      DELETE FROM packages
+      WHERE id = $1
+      RETURNING id
+      `,
       [id]
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Package not found" });
+      return res.status(404).json({
+        error: "Package not found",
+      });
     }
 
-    res.json({ success: true, message: "Package deleted successfully" });
-  } catch (err) {
-    console.error("DELETE package error:", err);
-    res.status(500).json({ error: err.message });
+    res.json({
+      success: true,
+      message: "Package deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete package error:", error);
+
+    res.status(500).json({
+      error: "Unable to delete package",
+    });
   }
 });
 
-// ==================== RESERVATIONS ====================
+/* =======================================================
+   PACKAGE RESERVATIONS
+======================================================= */
 
 router.get("/reservations", async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id, status, search_params, customer_info, created_at, booking_type
+      SELECT *
       FROM bookings
-      WHERE booking_type IS NULL OR booking_type = 'package'
+      WHERE booking_type = 'package'
+         OR booking_type IS NULL
       ORDER BY created_at DESC
     `);
 
-    const reservations = result.rows.map((b) => ({
-      id: b.id,
-      name:
-        b.customer_info?.name ||
-        b.customer_info?.firstName ||
-        b.customer_info?.email ||
-        "Unknown",
-      packageName:
-        b.search_params?.to ||
-        b.search_params?.destination ||
-        "N/A",
-      date: b.created_at?.toISOString().split("T")[0],
-      status: b.status || "Pending",
-      type: "package",
-    }));
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Reservations error:", error);
 
-    res.json(reservations);
-  } catch (err) {
-    console.error("Reservations error:", err);
-    res.status(500).json({ error: "Reservations error" });
+    res.status(500).json({
+      error: "Unable to get reservations",
+    });
   }
 });
 
 router.put("/reservations/:id/status", async (req, res) => {
   try {
-    const { status } = req.body;
     const { id } = req.params;
+    const { status } = req.body;
+
+    const allowedStatuses = [
+      "Pending",
+      "Confirmed",
+      "Cancelled",
+    ];
+
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({
+        error: "Invalid status",
+      });
+    }
 
     const result = await pool.query(
       `
       UPDATE bookings
-      SET status = $1, updated_at = CURRENT_TIMESTAMP
+      SET status = $1
       WHERE id = $2
       RETURNING *
       `,
@@ -244,17 +251,24 @@ router.put("/reservations/:id/status", async (req, res) => {
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Reservation not found" });
+      return res.status(404).json({
+        error: "Reservation not found",
+      });
     }
 
     res.json(result.rows[0]);
-  } catch (err) {
-    console.error("Update reservation error:", err);
-    res.status(500).json({ error: "Update reservation error" });
+  } catch (error) {
+    console.error("Update reservation error:", error);
+
+    res.status(500).json({
+      error: "Unable to update reservation",
+    });
   }
 });
 
-// ==================== HOTEL RESERVATIONS ====================
+/* =======================================================
+   HOTEL RESERVATIONS
+======================================================= */
 
 router.get("/hotels/reservations", async (req, res) => {
   try {
@@ -265,92 +279,72 @@ router.get("/hotels/reservations", async (req, res) => {
       ORDER BY created_at DESC
     `);
 
-    res.json(
-      result.rows.map((b) => ({
-        id: b.id,
-        type: "hotel",
-        client:
-          b.customer_info?.name ||
-          b.customer_info?.fullName ||
-          b.customer_info?.email ||
-          "Unknown",
-        hotelName:
-          b.selected_hotel?.name ||
-          b.selected_hotel?.hotelName ||
-          "Unknown Hotel",
-        checkIn:
-          b.selected_hotel?.checkIn ||
-          b.customer_info?.checkIn ||
-          "",
-        checkOut:
-          b.selected_hotel?.checkOut ||
-          b.customer_info?.checkOut ||
-          "",
-        status: b.status || "Pending",
-        date: b.created_at?.toISOString().split("T")[0],
-      }))
-    );
-  } catch (err) {
-    console.error("Admin hotel reservations error:", err);
-    res.status(500).json({ error: err.message });
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Hotel reservations error:", error);
+
+    res.status(500).json({
+      error: "Unable to get hotel reservations",
+    });
   }
 });
 
-// ==================== CLIENTS ====================
+/* =======================================================
+   CLIENTS
+======================================================= */
 
 router.get("/clients", async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id, email, first_name, last_name, phone
+      SELECT
+        id,
+        email,
+        first_name,
+        last_name,
+        phone,
+        city,
+        country,
+        role
       FROM users
       ORDER BY id DESC
     `);
 
-    res.json(
-      result.rows.map((user) => ({
-        id: user.id,
-        name:
-          `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
-          "Client",
-        email: user.email || "No email",
-        phone: user.phone || "No phone",
-      }))
-    );
-  } catch (err) {
-    console.error("CLIENTS ERROR:", err.message);
-    res.status(500).json({ error: err.message });
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Clients error:", error);
+
+    res.status(500).json({
+      error: "Unable to get clients",
+    });
   }
 });
 
-// ==================== PAYMENTS ====================
+/* =======================================================
+   PAYMENTS
+======================================================= */
 
 router.get("/payments", async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id, total_price, status, customer_info, created_at
+      SELECT *
       FROM bookings
       ORDER BY id DESC
     `);
 
-    const payments = result.rows.map((p) => ({
-      id: p.id,
-      invoice: `Invoice #${p.id}`,
-      client: p.customer_info?.name || p.customer_info?.email || "Unknown",
-      amount: p.total_price ? `$${p.total_price}` : "$0",
-      status: p.status === "Confirmed" ? "Paid" : "Not Paid",
-      date: p.created_at?.toISOString().split("T")[0],
-    }));
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Payments error:", error);
 
-    res.json(payments);
-  } catch (err) {
-    console.error("Payments error:", err);
-    res.status(500).json({ error: "Payments error" });
+    res.status(500).json({
+      error: "Unable to get payments",
+    });
   }
 });
 
-// ==================== MESSAGES ====================
+/* =======================================================
+   MESSAGES
+======================================================= */
 
-/* GET ALL MESSAGES */
 router.get("/messages", async (req, res) => {
   try {
     const result = await pool.query(`
@@ -359,28 +353,16 @@ router.get("/messages", async (req, res) => {
       ORDER BY created_at DESC
     `);
 
-    res.json(
-      result.rows.map((msg) => ({
-        id: msg.id,
-        name: msg.name,
-        email: msg.email,
-        message: msg.message,
-        reply: msg.reply || "",
-        date: msg.created_at
-          ? new Date(msg.created_at).toISOString().split("T")[0]
-          : "Today",
-      }))
-    );
+    res.json(result.rows);
   } catch (error) {
-    console.log("Get messages error:", error.message);
+    console.error("Get messages error:", error);
 
     res.status(500).json({
-      error: error.message,
+      error: "Unable to get messages",
     });
   }
 });
 
-/* REPLY TO MESSAGE */
 router.put("/messages/:id/reply", async (req, res) => {
   try {
     const { id } = req.params;
@@ -408,18 +390,59 @@ router.put("/messages/:id/reply", async (req, res) => {
       });
     }
 
+    const message = result.rows[0];
+
+    if (message.email) {
+      await sendEmail(
+        message.email,
+        "Reply from Egypt Holiday",
+        `
+          <h2>Hello ${message.name || "Client"},</h2>
+
+          <p>${reply}</p>
+
+          <br />
+
+          <p>
+            Best regards,<br />
+            Egypt Holiday Team
+          </p>
+        `
+      );
+    }
+
     res.json({
       success: true,
-      message: "Reply saved successfully",
-      data: result.rows[0],
+      message: "Reply sent successfully",
+      data: message,
     });
   } catch (error) {
-    console.log("Reply message error:", error.message);
+    console.error("Reply message error:", error);
 
     res.status(500).json({
-      error: error.message,
+      error: "Unable to send reply",
     });
   }
 });
+/* =======================================================
+   SUBSCRIBERS
+======================================================= */
 
+router.get("/subscribers", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, email, created_at
+      FROM subscribers
+      ORDER BY created_at DESC
+    `);
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Get subscribers error:", error);
+
+    res.status(500).json({
+      error: "Unable to get subscribers",
+    });
+  }
+});
 module.exports = router;

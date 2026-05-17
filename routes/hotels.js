@@ -1,26 +1,23 @@
 const express = require("express");
+const router = express.Router();
 const pool = require("../config/database");
 
-const router = express.Router();
+const adminMiddleware = require("../middleware/adminMiddleware");
 
-/* CREATE HOTEL BOOKING - CLIENT */
+/* =======================================================
+   PUBLIC - CREATE HOTEL BOOKING
+======================================================= */
+
 router.post("/reserve", async (req, res) => {
   try {
-    const { hotel, customerInfo, totalPrice, userRole } = req.body;
+    const {
+      selected_hotel,
+      customer_info,
+      total_price,
+      search_params,
+    } = req.body;
 
-    if (userRole === "admin") {
-      return res.status(403).json({
-        success: false,
-        error: "Admin cannot make hotel reservations",
-      });
-    }
-
-    if (!hotel || !customerInfo) {
-      return res.status(400).json({
-        success: false,
-        error: "Hotel and customer info are required",
-      });
-    }
+    const bookingReference = `HOTEL-${Date.now()}`;
 
     const result = await pool.query(
       `
@@ -28,40 +25,44 @@ router.post("/reserve", async (req, res) => {
       (
         booking_reference,
         booking_type,
-        status,
         selected_hotel,
+        customer_info,
         total_price,
-        customer_info
+        search_params,
+        status
       )
-      VALUES ($1, $2, $3, $4, $5, $6)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *
       `,
       [
-        `HOTEL-${Date.now()}`,
+        bookingReference,
         "hotel",
+        selected_hotel || {},
+        customer_info || {},
+        total_price || 0,
+        search_params || {},
         "Pending",
-        JSON.stringify(hotel),
-        totalPrice || 0,
-        JSON.stringify(customerInfo),
       ]
     );
 
     res.status(201).json({
       success: true,
-      message: "Hotel booking request sent successfully",
       booking: result.rows[0],
     });
   } catch (error) {
-    console.error("Hotel reservation error:", error);
+    console.error("Create hotel booking error:", error);
+
     res.status(500).json({
-      success: false,
-      error: error.message,
+      error: "Unable to create hotel booking",
     });
   }
 });
 
-/* GET HOTEL RESERVATIONS - ADMIN */
-router.get("/bookings", async (req, res) => {
+/* =======================================================
+   ADMIN ONLY - GET HOTEL BOOKINGS
+======================================================= */
+
+router.get("/reservations", adminMiddleware, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT *
@@ -70,99 +71,93 @@ router.get("/bookings", async (req, res) => {
       ORDER BY created_at DESC
     `);
 
-    res.json(
-      result.rows.map((b) => ({
-        id: b.id,
-        type: "hotel",
-        client:
-          b.customer_info?.name ||
-          b.customer_info?.fullName ||
-          b.customer_info?.email ||
-          "Unknown",
-        email: b.customer_info?.email || "",
-        phone: b.customer_info?.phone || "",
-        hotelName:
-          b.selected_hotel?.name ||
-          b.selected_hotel?.hotelName ||
-          "Unknown Hotel",
-        checkIn:
-          b.selected_hotel?.checkIn ||
-          b.customer_info?.checkIn ||
-          b.selected_hotel?.fromDate ||
-          "",
-        checkOut:
-          b.selected_hotel?.checkOut ||
-          b.customer_info?.checkOut ||
-          b.selected_hotel?.toDate ||
-          "",
-        status: b.status || "Pending",
-        amount: b.total_price || 0,
-        date: b.created_at?.toISOString().split("T")[0],
-      }))
-    );
+    const reservations = result.rows.map((b) => ({
+      id: b.id,
+      client:
+        b.customer_info?.name ||
+        b.customer_info?.email ||
+        "Unknown",
+
+      hotelName:
+        b.selected_hotel?.name ||
+        "Unknown Hotel",
+
+      totalPrice: b.total_price || 0,
+
+      status: b.status || "Pending",
+
+      checkIn:
+        b.selected_hotel?.checkIn || "",
+
+      checkOut:
+        b.selected_hotel?.checkOut || "",
+
+      createdAt: b.created_at,
+    }));
+
+    res.json(reservations);
   } catch (error) {
-    console.error("Get hotel bookings error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
+    console.error("Get hotel reservations error:", error);
 
-/* UPDATE HOTEL BOOKING STATUS */
-router.put("/bookings/:id/status", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
-
-    const result = await pool.query(
-      `
-      UPDATE bookings
-      SET status = $1,
-          updated_at = CURRENT_TIMESTAMP
-      WHERE id = $2 AND booking_type = 'hotel'
-      RETURNING *
-      `,
-      [status, id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Hotel booking not found" });
-    }
-
-    res.json({
-      success: true,
-      booking: result.rows[0],
+    res.status(500).json({
+      error: "Unable to get hotel reservations",
     });
-  } catch (error) {
-    console.error("Update hotel booking error:", error);
-    res.status(500).json({ error: error.message });
   }
 });
 
-/* DELETE HOTEL BOOKING */
-router.delete("/bookings/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
+/* =======================================================
+   ADMIN ONLY - UPDATE STATUS
+======================================================= */
 
-    const result = await pool.query(
-      `
-      DELETE FROM bookings
-      WHERE id = $1 AND booking_type = 'hotel'
-      RETURNING *
-      `,
-      [id]
-    );
+router.put(
+  "/reservations/:id/status",
+  adminMiddleware,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Hotel booking not found" });
+      const allowedStatuses = [
+        "Pending",
+        "Confirmed",
+        "Cancelled",
+      ];
+
+      if (!allowedStatuses.includes(status)) {
+        return res.status(400).json({
+          error: "Invalid status",
+        });
+      }
+
+      const result = await pool.query(
+        `
+        UPDATE bookings
+        SET status = $1
+        WHERE id = $2
+        AND booking_type = 'hotel'
+        RETURNING *
+        `,
+        [status, id]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          error: "Reservation not found",
+        });
+      }
+
+      res.json({
+        success: true,
+        reservation: result.rows[0],
+      });
+    } catch (error) {
+      console.error("Update reservation status error:", error);
+
+      res.status(500).json({
+        error: "Unable to update reservation status",
+      });
     }
-
-    res.json({
-      success: true,
-      message: "Hotel booking deleted successfully",
-    });
-  } catch (error) {
-    console.error("Delete hotel booking error:", error);
-    res.status(500).json({ error: error.message });
   }
-});
+);
 
 module.exports = router;
