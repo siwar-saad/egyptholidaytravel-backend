@@ -4,6 +4,7 @@ const helmet = require("helmet");
 require("dotenv").config({ quiet: true });
 
 const pool = require("./config/database");
+const initializeDatabase = require("./data/initDb");
 
 const authRoutes = require("./routes/auth");
 const adminRoutes = require("./routes/admin");
@@ -12,7 +13,9 @@ const packageRoutes = require("./routes/packages");
 const subscriberRoutes = require("./routes/subscribers");
 const bookingRoutes = require("./routes/bookings");
 const messageRoutes = require("./routes/messages");
+const hotelReservationRoutes = require("./routes/hotels_reservetion");
 const hotelRoutes = require("./routes/hotels");
+
 
 if (!process.env.JWT_SECRET) {
   console.error("❌ JWT_SECRET is missing in .env");
@@ -26,6 +29,8 @@ if (!process.env.FRONTEND_URL) {
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+initializeDatabase();
 
 app.use(
   helmet({
@@ -63,6 +68,7 @@ app.use("/api/packages", packageRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api", subscriberRoutes);
+app.use("/api/hotels_reservation", hotelReservationRoutes);
 app.use("/api/hotels", hotelRoutes);
 
 app.get("/", (req, res) => {

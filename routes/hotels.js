@@ -5,159 +5,171 @@ const pool = require("../config/database");
 const adminMiddleware = require("../middleware/adminMiddleware");
 
 /* =======================================================
-   PUBLIC - CREATE HOTEL BOOKING
+   PUBLIC - GET HOTELS
 ======================================================= */
 
-router.post("/reserve", async (req, res) => {
-  try {
-    const {
-      selected_hotel,
-      customer_info,
-      total_price,
-      search_params,
-    } = req.body;
-
-    const bookingReference = `HOTEL-${Date.now()}`;
-
-    const result = await pool.query(
-      `
-      INSERT INTO bookings
-      (
-        booking_reference,
-        booking_type,
-        selected_hotel,
-        customer_info,
-        total_price,
-        search_params,
-        status
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING *
-      `,
-      [
-        bookingReference,
-        "hotel",
-        selected_hotel || {},
-        customer_info || {},
-        total_price || 0,
-        search_params || {},
-        "Pending",
-      ]
-    );
-
-    res.status(201).json({
-      success: true,
-      booking: result.rows[0],
-    });
-  } catch (error) {
-    console.error("Create hotel booking error:", error);
-
-    res.status(500).json({
-      error: "Unable to create hotel booking",
-    });
-  }
-});
-
-/* =======================================================
-   ADMIN ONLY - GET HOTEL BOOKINGS
-======================================================= */
-
-router.get("/reservations", adminMiddleware, async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT *
-      FROM bookings
-      WHERE booking_type = 'hotel'
-      ORDER BY created_at DESC
+      FROM hotels
+      ORDER BY id DESC
     `);
 
-    const reservations = result.rows.map((b) => ({
-      id: b.id,
-      client:
-        b.customer_info?.name ||
-        b.customer_info?.email ||
-        "Unknown",
+    res.json(result.rows);
 
-      hotelName:
-        b.selected_hotel?.name ||
-        "Unknown Hotel",
-
-      totalPrice: b.total_price || 0,
-
-      status: b.status || "Pending",
-
-      checkIn:
-        b.selected_hotel?.checkIn || "",
-
-      checkOut:
-        b.selected_hotel?.checkOut || "",
-
-      createdAt: b.created_at,
-    }));
-
-    res.json(reservations);
   } catch (error) {
-    console.error("Get hotel reservations error:", error);
+    console.error("Get hotels error:", error);
 
     res.status(500).json({
-      error: "Unable to get hotel reservations",
+      error: "Unable to load hotels",
     });
+  }
+});
+/* =======================================================
+   ADMIN ONLY - CREATE HOTEL
+======================================================= */
+
+router.post("/add", adminMiddleware, async (req, res) => {
+  try {
+    const {
+      name,
+      city,
+      meal,
+      image,
+      description,
+      singleRoom,
+      doubleRoom,
+      price,
+    } = req.body;
+
+    if (!name) {
+      return res.status(400).json({
+        error: "Hotel name is required",
+      });
+    }
+
+    const result = await pool.query(
+      `
+      INSERT INTO hotels
+      (
+        name,
+        city,
+        meal,
+        image,
+        description,
+        single_room,
+        double_room,
+        price
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+      RETURNING *
+      `,
+      [
+        name,
+        city || "",
+        meal || "",
+        image || "",
+        description || "",
+        singleRoom || null,
+        doubleRoom || null,
+        price || null,
+      ]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error("Create hotel error:", error);
+    res.status(500).json({ error: "Unable to create hotel" });
   }
 });
 
 /* =======================================================
-   ADMIN ONLY - UPDATE STATUS
+   ADMIN ONLY - UPDATE HOTEL
 ======================================================= */
 
-router.put(
-  "/reservations/:id/status",
-  adminMiddleware,
-  async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { status } = req.body;
+router.put("/:id", adminMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
 
-      const allowedStatuses = [
-        "Pending",
-        "Confirmed",
-        "Cancelled",
-      ];
+    const {
+      name,
+      city,
+      meal,
+      image,
+      description,
+      singleRoom,
+      doubleRoom,
+      price,
+    } = req.body;
 
-      if (!allowedStatuses.includes(status)) {
-        return res.status(400).json({
-          error: "Invalid status",
-        });
-      }
+    const result = await pool.query(
+      `
+      UPDATE hotels
+      SET
+        name = $1,
+        city = $2,
+        meal = $3,
+        image = $4,
+        description = $5,
+        single_room = $6,
+        double_room = $7,
+        price = $8
+      WHERE id = $9
+      RETURNING *
+      `,
+      [
+        name,
+        city || "",
+        meal || "",
+        image || "",
+        description || "",
+        singleRoom || null,
+        doubleRoom || null,
+        price || null,
+        id,
+      ]
+    );
 
-      const result = await pool.query(
-        `
-        UPDATE bookings
-        SET status = $1
-        WHERE id = $2
-        AND booking_type = 'hotel'
-        RETURNING *
-        `,
-        [status, id]
-      );
-
-      if (result.rows.length === 0) {
-        return res.status(404).json({
-          error: "Reservation not found",
-        });
-      }
-
-      res.json({
-        success: true,
-        reservation: result.rows[0],
-      });
-    } catch (error) {
-      console.error("Update reservation status error:", error);
-
-      res.status(500).json({
-        error: "Unable to update reservation status",
-      });
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Hotel not found" });
     }
-  }
-);
 
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Update hotel error:", error);
+    res.status(500).json({ error: "Unable to update hotel" });
+  }
+});
+
+/* =======================================================
+   ADMIN ONLY - DELETE HOTEL
+======================================================= */
+
+router.delete("/:id", adminMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `
+      DELETE FROM hotels
+      WHERE id = $1
+      RETURNING id
+      `,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Hotel not found" });
+    }
+
+    res.json({
+      success: true,
+      message: "Hotel deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete hotel error:", error);
+    res.status(500).json({ error: "Unable to delete hotel" });
+  }
+});
 module.exports = router;

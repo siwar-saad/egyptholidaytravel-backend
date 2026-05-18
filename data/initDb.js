@@ -1,9 +1,10 @@
 const pool = require("../config/database");
-const destinations = require("./destinations");
-const packages = require("./packages");
+const destinations = {};
+const packages = [];
 
 const initializeDatabase = async () => {
   try {
+    /* USERS */
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -25,6 +26,7 @@ const initializeDatabase = async () => {
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
     `);
 
+    /* DESTINATIONS */
     await pool.query(`
       CREATE TABLE IF NOT EXISTS destinations (
         id VARCHAR(50) PRIMARY KEY,
@@ -36,6 +38,7 @@ const initializeDatabase = async () => {
       );
     `);
 
+    /* PACKAGES */
     await pool.query(`
       CREATE TABLE IF NOT EXISTS packages (
         id SERIAL PRIMARY KEY,
@@ -49,6 +52,23 @@ const initializeDatabase = async () => {
       );
     `);
 
+    /* HOTELS */
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS hotels (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        city VARCHAR(100),
+        meal VARCHAR(100),
+        image TEXT,
+        description TEXT,
+        single_room DECIMAL(10,2),
+        double_room DECIMAL(10,2),
+        price DECIMAL(10,2),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    /* BOOKINGS */
     await pool.query(`
       CREATE TABLE IF NOT EXISTS bookings (
         id SERIAL PRIMARY KEY,
@@ -63,6 +83,19 @@ const initializeDatabase = async () => {
       );
     `);
 
+    /* HOTEL BOOKINGS */
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS hotel_bookings (
+        id SERIAL PRIMARY KEY,
+        hotel JSONB,
+        customer_info JSONB,
+        total_price DECIMAL(10,2),
+        status VARCHAR(50) DEFAULT 'Pending',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    /* MESSAGES */
     await pool.query(`
       CREATE TABLE IF NOT EXISTS messages (
         id SERIAL PRIMARY KEY,
@@ -74,6 +107,7 @@ const initializeDatabase = async () => {
       );
     `);
 
+    /* PAYMENTS */
     await pool.query(`
       CREATE TABLE IF NOT EXISTS payments (
         id SERIAL PRIMARY KEY,
@@ -85,6 +119,26 @@ const initializeDatabase = async () => {
       );
     `);
 
+    /* SUBSCRIBERS */
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS subscribers (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    /* SETTINGS */
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS settings (
+        id SERIAL PRIMARY KEY,
+        key VARCHAR(100) UNIQUE NOT NULL,
+        value JSONB NOT NULL,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    /* ALTER TABLES */
     await pool.query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS city VARCHAR(100);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT 'Egypt';
@@ -95,12 +149,21 @@ const initializeDatabase = async () => {
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS price VARCHAR(100);
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS pdf_status VARCHAR(50) DEFAULT 'Missing';
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS visibility VARCHAR(50) DEFAULT 'Private';
+
+      ALTER TABLE hotels ADD COLUMN IF NOT EXISTS meal VARCHAR(100);
+      ALTER TABLE hotels ADD COLUMN IF NOT EXISTS image TEXT;
+      ALTER TABLE hotels ADD COLUMN IF NOT EXISTS description TEXT;
+      ALTER TABLE hotels ADD COLUMN IF NOT EXISTS single_room DECIMAL(10,2);
+      ALTER TABLE hotels ADD COLUMN IF NOT EXISTS double_room DECIMAL(10,2);
+      ALTER TABLE hotels ADD COLUMN IF NOT EXISTS price DECIMAL(10,2);
     `);
 
+    /* INSERT DESTINATIONS */
     for (const dest of Object.values(destinations)) {
       await pool.query(
         `
-        INSERT INTO destinations (id, name, description, region, image, data)
+        INSERT INTO destinations
+        (id, name, description, region, image, data)
         VALUES ($1, $2, $3, $4, $5, $6)
         ON CONFLICT (id) DO NOTHING
         `,
@@ -115,6 +178,7 @@ const initializeDatabase = async () => {
       );
     }
 
+    /* INSERT PACKAGES */
     for (const pkg of packages) {
       await pool.query(
         `
@@ -128,7 +192,11 @@ const initializeDatabase = async () => {
 
     console.log("✅ Database initialized successfully");
   } catch (error) {
-    console.error("❌ Database initialization error:", error.message);
+    console.error(
+      "❌ Database initialization error:",
+      error.message
+    );
+
     throw error;
   }
 };

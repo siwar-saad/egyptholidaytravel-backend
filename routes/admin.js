@@ -6,6 +6,8 @@ const { sendEmail } = require("../services/emailService");
 
 const adminMiddleware = require("../middleware/adminMiddleware");
 
+const bcrypt = require("bcrypt");
+
 /* Protect all admin routes */
 router.use(adminMiddleware);
 
@@ -266,6 +268,21 @@ router.put("/reservations/:id/status", async (req, res) => {
   }
 });
 
+router.post("/", async (req, res) => {
+  const { name, city, meal, image, description, singleRoom, doubleRoom, price } = req.body;
+
+  const result = await pool.query(
+    `
+    INSERT INTO hotels
+    (name, city, meal, image, description, single_room, double_room, price)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+    RETURNING *
+    `,
+    [name, city, meal, image, description, singleRoom, doubleRoom, price]
+  );
+
+  res.status(201).json(result.rows[0]);
+});
 /* =======================================================
    HOTEL RESERVATIONS
 ======================================================= */
@@ -315,6 +332,74 @@ router.get("/clients", async (req, res) => {
 
     res.status(500).json({
       error: "Unable to get clients",
+    });
+  }
+});
+router.post("/clients", async (req, res) => {
+  try {
+    const {
+      first_name,
+      last_name,
+      email,
+      phone,
+      city,
+      country,
+      role,
+      password,
+    } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        error: "Email and password are required",
+      });
+    }
+
+    const bcrypt = require("bcrypt");
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const result = await pool.query(
+      `
+      INSERT INTO users
+      (
+        first_name,
+        last_name,
+        email,
+        phone,
+        city,
+        country,
+        role,
+        password
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+      RETURNING
+        id,
+        first_name,
+        last_name,
+        email,
+        phone,
+        city,
+        country,
+        role
+      `,
+      [
+        first_name,
+        last_name,
+        email,
+        phone,
+        city,
+        country || "Egypt",
+        role || "user",
+        hashedPassword,
+      ]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error("Create client error:", error);
+
+    res.status(500).json({
+      error: "Unable to create client",
     });
   }
 });
@@ -443,6 +528,101 @@ router.get("/subscribers", async (req, res) => {
     res.status(500).json({
       error: "Unable to get subscribers",
     });
+  }
+});
+
+router.get("/settings", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT key, value FROM settings");
+
+    const settings = {
+      agency: {
+        name: "Egypt Holiday Travel",
+        email: "egyptholidaytravel@gmail.com",
+        address: "Mansoura, Egypt",
+        facebook: "",
+        instagram: "",
+      },
+      contacts: ["01099999234", "01050971444", "01050383173"],
+    };
+
+    result.rows.forEach((row) => {
+      settings[row.key] = row.value;
+    });
+
+    res.json(settings);
+  } catch (error) {
+    res.status(500).json({ error: "Unable to load settings" });
+  }
+});
+
+router.put("/settings/agency", async (req, res) => {
+  try {
+    const agency = req.body;
+
+    await pool.query(
+      `
+      INSERT INTO settings (key, value)
+      VALUES ('agency', $1)
+      ON CONFLICT (key)
+      DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP
+      `,
+      [JSON.stringify(agency)]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Unable to update agency settings" });
+  }
+});
+
+router.put("/settings/contacts", async (req, res) => {
+  try {
+    const { contacts } = req.body;
+
+    await pool.query(
+      `
+      INSERT INTO settings (key, value)
+      VALUES ('contacts', $1)
+      ON CONFLICT (key)
+      DO UPDATE SET value = $1, updated_at = CURRENT_TIMESTAMP
+      `,
+      [JSON.stringify(contacts)]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Unable to update contacts" });
+  }
+});
+
+router.put("/settings/password", async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+
+    const userResult = await pool.query(
+      "SELECT id, password FROM users WHERE id = $1",
+      [req.user.id]
+    );
+
+    const user = userResult.rows[0];
+
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+
+    if (!isMatch) {
+      return res.status(400).json({ error: "Current password is incorrect" });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await pool.query(
+      "UPDATE users SET password = $1 WHERE id = $2",
+      [hashedPassword, req.user.id]
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Unable to update password" });
   }
 });
 module.exports = router;
