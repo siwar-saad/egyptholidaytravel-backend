@@ -307,34 +307,35 @@ router.get("/hotels/reservations", async (req, res) => {
 });
 
 /* =======================================================
-   CLIENTS
+   CLIENTS CRUD
 ======================================================= */
 
+/* GET ALL CLIENTS */
 router.get("/clients", async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT
         id,
-        email,
         first_name,
         last_name,
+        email,
         phone,
         city,
         country,
-        role
+        role,
+        created_at
       FROM users
       ORDER BY id DESC
     `);
 
     res.json(result.rows);
   } catch (error) {
-    console.error("Clients error:", error);
-
-    res.status(500).json({
-      error: "Unable to get clients",
-    });
+    console.error("Get clients error:", error);
+    res.status(500).json({ error: "Unable to get clients" });
   }
 });
+
+/* CREATE CLIENT */
 router.post("/clients", async (req, res) => {
   try {
     const {
@@ -354,7 +355,16 @@ router.post("/clients", async (req, res) => {
       });
     }
 
-    const bcrypt = require("bcrypt");
+    const existing = await pool.query(
+      "SELECT id FROM users WHERE email = $1",
+      [email]
+    );
+
+    if (existing.rows.length > 0) {
+      return res.status(400).json({
+        error: "Email already exists",
+      });
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -380,14 +390,15 @@ router.post("/clients", async (req, res) => {
         phone,
         city,
         country,
-        role
+        role,
+        created_at
       `,
       [
-        first_name,
-        last_name,
+        first_name || "",
+        last_name || "",
         email,
-        phone,
-        city,
+        phone || "",
+        city || "",
         country || "Egypt",
         role || "user",
         hashedPassword,
@@ -397,34 +408,163 @@ router.post("/clients", async (req, res) => {
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error("Create client error:", error);
-
-    res.status(500).json({
-      error: "Unable to create client",
-    });
+    res.status(500).json({ error: "Unable to create client" });
   }
 });
 
-/* =======================================================
-   PAYMENTS
-======================================================= */
-
-router.get("/payments", async (req, res) => {
+/* UPDATE CLIENT */
+router.put("/clients/:id", async (req, res) => {
   try {
-    const result = await pool.query(`
-      SELECT *
-      FROM bookings
-      ORDER BY id DESC
-    `);
+    const { id } = req.params;
 
-    res.json(result.rows);
+    const {
+      first_name,
+      last_name,
+      email,
+      phone,
+      city,
+      country,
+      role,
+      password,
+    } = req.body;
+
+    const existing = await pool.query(
+      "SELECT id FROM users WHERE id = $1",
+      [id]
+    );
+
+    if (existing.rows.length === 0) {
+      return res.status(404).json({
+        error: "Client not found",
+      });
+    }
+
+    let query;
+    let values;
+
+    if (password && password.trim()) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      query = `
+        UPDATE users
+        SET
+          first_name = $1,
+          last_name = $2,
+          email = $3,
+          phone = $4,
+          city = $5,
+          country = $6,
+          role = $7,
+          password = $8,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $9
+        RETURNING
+          id,
+          first_name,
+          last_name,
+          email,
+          phone,
+          city,
+          country,
+          role
+      `;
+
+      values = [
+        first_name || "",
+        last_name || "",
+        email,
+        phone || "",
+        city || "",
+        country || "Egypt",
+        role || "user",
+        hashedPassword,
+        id,
+      ];
+    } else {
+      query = `
+        UPDATE users
+        SET
+          first_name = $1,
+          last_name = $2,
+          email = $3,
+          phone = $4,
+          city = $5,
+          country = $6,
+          role = $7,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $8
+        RETURNING
+          id,
+          first_name,
+          last_name,
+          email,
+          phone,
+          city,
+          country,
+          role
+      `;
+
+      values = [
+        first_name || "",
+        last_name || "",
+        email,
+        phone || "",
+        city || "",
+        country || "Egypt",
+        role || "user",
+        id,
+      ];
+    }
+
+    const result = await pool.query(query, values);
+
+    res.json(result.rows[0]);
   } catch (error) {
-    console.error("Payments error:", error);
+    console.error("Update client error:", error);
+    res.status(500).json({ error: "Unable to update client" });
+  }
+});
+
+/* DELETE CLIENT */
+router.delete("/clients/:id", adminMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (Number(req.user.id) === Number(id)) {
+      return res.status(403).json({
+        error: "You cannot delete your own admin account",
+      });
+    }
+
+    const result = await pool.query(
+      `
+      DELETE FROM users
+      WHERE id = $1
+      RETURNING id
+      `,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        error: "Client not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Client deleted successfully",
+    });
+
+  } catch (error) {
+    console.error("Delete client error:", error);
 
     res.status(500).json({
-      error: "Unable to get payments",
+      error: "Unable to delete client",
     });
   }
 });
+
 
 /* =======================================================
    MESSAGES

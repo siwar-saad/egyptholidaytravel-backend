@@ -11,31 +11,58 @@ const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
   throw new Error("JWT_SECRET is missing in environment variables");
 }
-/* SIGN UP */
+
+const createToken = (user) => {
+  return jwt.sign(
+    {
+      id: user.id,
+      email: user.email,
+      role: user.role || "user",
+    },
+    JWT_SECRET,
+    { expiresIn: "7d" }
+  );
+};
+
+const cleanUser = (user) => ({
+  id: user.id,
+  email: user.email,
+  role: user.role || "user",
+  firstName: user.first_name || "",
+  lastName: user.last_name || "",
+  name: `${user.first_name || ""} ${user.last_name || ""}`.trim(),
+});
+
+/* SIGNUP */
 router.post("/signup", async (req, res) => {
   try {
     const {
+      firstName,
+      lastName,
       first_name,
       last_name,
       email,
       password,
+      confirmPassword,
       phone,
       city,
       country,
     } = req.body;
 
-    if (!email || !password) {
+    if (!email || !password || !confirmPassword) {
       return res.status(400).json({
-        error: "Email and password are required",
+        error: "Email, password and confirmation are required",
+      });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        error: "Passwords do not match",
       });
     }
 
     const existingUser = await pool.query(
-      `
-      SELECT id
-      FROM users
-      WHERE email = $1
-      `,
+      "SELECT id FROM users WHERE email = $1",
       [email]
     );
 
@@ -50,22 +77,13 @@ router.post("/signup", async (req, res) => {
     const result = await pool.query(
       `
       INSERT INTO users
-      (
-        first_name,
-        last_name,
-        email,
-        password,
-        phone,
-        city,
-        country,
-        role
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING *
+      (first_name, last_name, email, password, phone, city, country, role)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+      RETURNING id, first_name, last_name, email, phone, city, country, role
       `,
       [
-        first_name || "",
-        last_name || "",
+        firstName || first_name || "",
+        lastName || last_name || "",
         email,
         hashedPassword,
         phone || "",
@@ -76,40 +94,21 @@ router.post("/signup", async (req, res) => {
     );
 
     const user = result.rows[0];
-
-    const token = jwt.sign(
-      {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-      },
-      JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    const token = createToken(user);
 
     res.status(201).json({
       success: true,
       token,
-      user: {
-        id: user.id,
-        name:
-          `${user.first_name || ""} ${user.last_name || ""}`.trim(),
-        email: user.email,
-        phone: user.phone || "",
-        city: user.city || "Mansoura",
-        country: user.country || "Egypt",
-        avatar: user.avatar || "",
-        role: user.role || "user",
-      },
+      user: cleanUser(user),
     });
   } catch (error) {
     console.error("Signup error:", error);
-
     res.status(500).json({
       error: "Unable to create account",
     });
   }
 });
+
 /* LOGIN */
 router.post("/login", async (req, res) => {
   try {
@@ -123,7 +122,7 @@ router.post("/login", async (req, res) => {
 
     const result = await pool.query(
       `
-      SELECT *
+      SELECT id, first_name, last_name, email, password, role
       FROM users
       WHERE email = $1
       `,
@@ -132,55 +131,91 @@ router.post("/login", async (req, res) => {
 
     if (result.rows.length === 0) {
       return res.status(401).json({
-        error: "Invalid credentials",
+        error: "Invalid email or password",
       });
     }
 
     const user = result.rows[0];
 
-    if (!user.password) {
-      return res.status(500).json({
-        error: "User password missing in database",
-      });
-    }
+    const isMatch = await bcrypt.compare(password, user.password);
 
-    const validPassword = await bcrypt.compare(
-      password,
-      user.password
-    );
-
-    if (!validPassword) {
+    if (!isMatch) {
       return res.status(401).json({
-        error: "Invalid credentials",
+        error: "Invalid email or password",
       });
     }
 
-    const token = jwt.sign(
-      {
-        id: user.id,
-        role: user.role,
-      },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: "7d",
-      }
-    );
+    const token = createToken(user);
 
     res.json({
       success: true,
       token,
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-      },
+      user: cleanUser(user),
     });
-
   } catch (error) {
     console.error("Login error:", error);
-
     res.status(500).json({
       error: "Login failed",
+    });
+  }
+});
+
+/* FORGOT PASSWORD */
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        error: "Email is required",
+      });
+    }
+
+    const result = await pool.query(
+      "SELECT id, email FROM users WHERE email = $1",
+      [email]
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({
+        success: true,
+        message: "If this email exists, a reset code was sent",
+      });
+    }
+
+    const user = result.rows[0];
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedCode = await bcrypt.hash(resetCode, 10);
+
+    await pool.query(
+      `
+      UPDATE users
+      SET reset_token = $1,
+          reset_token_expires = NOW() + INTERVAL '15 minutes'
+      WHERE id = $2
+      `,
+      [hashedCode, user.id]
+    );
+
+    await sendEmail(
+      user.email,
+      "Egypt Holiday - Password Reset Code",
+      `
+      <h2>Password Reset</h2>
+      <p>Your reset code is:</p>
+      <h1>${resetCode}</h1>
+      <p>This code expires in 15 minutes.</p>
+      `
+    );
+
+    res.json({
+      success: true,
+      message: "If this email exists, a reset code was sent",
+    });
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    res.status(500).json({
+      error: "Unable to send reset code",
     });
   }
 });
@@ -215,9 +250,9 @@ router.post("/reset-password", async (req, res) => {
 
     const user = result.rows[0];
 
-    const isValidCode = await bcrypt.compare(code, user.reset_token);
+    const validCode = await bcrypt.compare(code, user.reset_token);
 
-    if (!isValidCode) {
+    if (!validCode) {
       return res.status(400).json({
         error: "Invalid or expired reset code",
       });
@@ -237,36 +272,19 @@ router.post("/reset-password", async (req, res) => {
       [hashedPassword, user.id]
     );
 
-    const role = user.role || "user";
-
-    const token = jwt.sign(
-      {
-        id: user.id,
-        email: user.email,
-        role,
-      },
-      JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    const token = createToken(user);
 
     res.json({
       success: true,
       message: "Password reset successfully",
       token,
-      user: {
-        id: user.id,
-        name: `${user.first_name || ""} ${user.last_name || ""}`.trim(),
-        email: user.email,
-        phone: user.phone || "",
-        city: user.city || "Mansoura",
-        country: user.country || "Egypt",
-        avatar: user.avatar || "",
-        role,
-      },
+      user: cleanUser(user),
     });
   } catch (error) {
     console.error("Reset password error:", error);
-    res.status(500).json({ error: "Unable to reset password" });
+    res.status(500).json({
+      error: "Unable to reset password",
+    });
   }
 });
 
