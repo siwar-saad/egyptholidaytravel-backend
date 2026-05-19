@@ -115,105 +115,73 @@ router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    if (!email || !password) {
+      return res.status(400).json({
+        error: "Email and password are required",
+      });
+    }
+
     const result = await pool.query(
-      "SELECT * FROM users WHERE email = $1",
+      `
+      SELECT *
+      FROM users
+      WHERE email = $1
+      `,
       [email]
     );
 
     if (result.rows.length === 0) {
-      return res.status(401).json({ error: "Invalid email or password" });
-    }
-
-    const user = result.rows[0];
-
-    const isMatch = await bcrypt.compare(password, user.password);
-
-    if (!isMatch) {
-      return res.status(401).json({ error: "Invalid email or password" });
-    }
-
-    const role = user.role || "user";
-
-    const token = jwt.sign(
-      {
-        id: user.id,
-        email: user.email,
-        role,
-      },
-      JWT_SECRET,
-      { expiresIn: "7d" }
-    );
-
-    res.json({
-      token,
-      user: {
-        id: user.id,
-        name: `${user.first_name || ""} ${user.last_name || ""}`.trim(),
-        email: user.email,
-        phone: user.phone || "",
-        city: user.city || "Mansoura",
-        country: user.country || "Egypt",
-        avatar: user.avatar || "",
-        role,
-      },
-    });
-  } catch (error) {
-    console.error("Login error:", error);
-    res.status(500).json({ error: "Login failed" });
-  }
-});
-
-/* FORGOT PASSWORD - SEND CODE */
-router.post("/forgot-password", async (req, res) => {
-  try {
-    const { email } = req.body;
-
-    const result = await pool.query(
-      "SELECT * FROM users WHERE email = $1",
-      [email]
-    );
-
-    // Generic response to avoid leaking registered emails
-    if (result.rows.length === 0) {
-      return res.json({
-        success: true,
-        message: "If this email exists, a reset code was sent",
+      return res.status(401).json({
+        error: "Invalid credentials",
       });
     }
 
     const user = result.rows[0];
 
-    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const hashedCode = await bcrypt.hash(resetCode, 10);
+    if (!user.password) {
+      return res.status(500).json({
+        error: "User password missing in database",
+      });
+    }
 
-    await pool.query(
-      `
-      UPDATE users
-      SET reset_token = $1,
-          reset_token_expires = NOW() + INTERVAL '15 minutes'
-      WHERE id = $2
-      `,
-      [hashedCode, user.id]
+    const validPassword = await bcrypt.compare(
+      password,
+      user.password
     );
 
-    await sendEmail(
-      email,
-      "Egypt Holiday - Password Reset Code",
-      `
-        <h2>Password Reset</h2>
-        <p>Your reset code is:</p>
-        <h1>${resetCode}</h1>
-        <p>This code expires in 15 minutes.</p>
-      `
+    if (!validPassword) {
+      return res.status(401).json({
+        error: "Invalid credentials",
+      });
+    }
+
+    const token = jwt.sign(
+      {
+        id: user.id,
+        role: user.role,
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "7d",
+      }
     );
 
     res.json({
       success: true,
-      message: "If this email exists, a reset code was sent",
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      },
     });
+
   } catch (error) {
-    console.error("Forgot password error:", error);
-    res.status(500).json({ error: "Unable to send reset code" });
+    console.error("Login error:", error);
+
+    res.status(500).json({
+      error: "Login failed",
+    });
   }
 });
 
