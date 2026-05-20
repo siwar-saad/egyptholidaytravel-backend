@@ -1,5 +1,9 @@
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const pool = require("../config/database");
+
+const hashToken = (token) =>
+  crypto.createHash("sha256").update(token).digest("hex");
 
 const authMiddleware = async (req, res, next) => {
   try {
@@ -17,7 +21,7 @@ const authMiddleware = async (req, res, next) => {
 
     const result = await pool.query(
       `
-      SELECT id, email, first_name, last_name, role
+      SELECT id, email, first_name, last_name, role, token_hash, token_expires
       FROM users
       WHERE id = $1
       `,
@@ -30,7 +34,20 @@ const authMiddleware = async (req, res, next) => {
       });
     }
 
-    req.user = result.rows[0];
+    const user = result.rows[0];
+
+    if (
+      !user.token_hash ||
+      user.token_hash !== hashToken(token) ||
+      !user.token_expires ||
+      new Date(user.token_expires) <= new Date()
+    ) {
+      return res.status(401).json({
+        error: "Invalid or expired token.",
+      });
+    }
+
+    req.user = user;
 
     next();
   } catch (error) {

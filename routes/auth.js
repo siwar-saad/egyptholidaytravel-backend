@@ -1,8 +1,10 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const pool = require("../config/database");
 const { sendEmail } = require("../services/emailService");
+const authMiddleware = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
@@ -12,15 +14,39 @@ if (!JWT_SECRET) {
   throw new Error("JWT_SECRET is missing in environment variables");
 }
 
-const createToken = (user) => {
-  return jwt.sign(
+const hashToken = (token) =>
+  crypto.createHash("sha256").update(token).digest("hex");
+
+const createToken = (user, expiresIn = "1d") => {
+  const token = jwt.sign(
     {
       id: user.id,
       email: user.email,
       role: user.role || "user",
     },
     JWT_SECRET,
-    { expiresIn: "7d" }
+    { expiresIn }
+  );
+
+  const decodedToken = jwt.decode(token);
+
+  return {
+    token,
+    tokenHash: hashToken(token),
+    tokenExpires: new Date(decodedToken.exp * 1000),
+  };
+};
+
+const storeUserToken = async (userId, tokenData) => {
+  await pool.query(
+    `
+    UPDATE users
+    SET token_hash = $1,
+        token_expires = $2,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = $3
+    `,
+    [tokenData.tokenHash, tokenData.tokenExpires, userId]
   );
 };
 
@@ -31,6 +57,65 @@ const cleanUser = (user) => ({
   firstName: user.first_name || "",
   lastName: user.last_name || "",
   name: `${user.first_name || ""} ${user.last_name || ""}`.trim(),
+});
+
+const loginAttempts = new Map();
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOGIN_LOCK_TIME = 15 * 60 * 1000;
+
+const getLoginKey = (req, email) => `${req.ip}:${email}`;
+
+const isLoginLocked = (key) => {
+  const attempt = loginAttempts.get(key);
+
+  if (!attempt?.lockedUntil) return false;
+
+  if (attempt.lockedUntil <= Date.now()) {
+    loginAttempts.delete(key);
+    return false;
+  }
+
+  return true;
+};
+
+const recordFailedLogin = (key) => {
+  const attempt = loginAttempts.get(key) || { count: 0, lockedUntil: null };
+  const nextCount = attempt.count + 1;
+
+  loginAttempts.set(key, {
+    count: nextCount,
+    lockedUntil:
+      nextCount >= MAX_LOGIN_ATTEMPTS
+        ? Date.now() + LOGIN_LOCK_TIME
+        : null,
+  });
+};
+
+/* CURRENT USER */
+router.get("/me", authMiddleware, async (req, res) => {
+  res.json({
+    success: true,
+    user: cleanUser(req.user),
+  });
+});
+
+/* LOGOUT */
+router.post("/logout", authMiddleware, async (req, res) => {
+  await pool.query(
+    `
+    UPDATE users
+    SET token_hash = NULL,
+        token_expires = NULL,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = $1
+    `,
+    [req.user.id]
+  );
+
+  res.json({
+    success: true,
+    message: "Logged out successfully",
+  });
 });
 
 /* SIGNUP */
@@ -94,11 +179,13 @@ router.post("/signup", async (req, res) => {
     );
 
     const user = result.rows[0];
-    const token = createToken(user);
+    const tokenData = createToken(user);
+
+    await storeUserToken(user.id, tokenData);
 
     res.status(201).json({
       success: true,
-      token,
+      token: tokenData.token,
       user: cleanUser(user),
     });
   } catch (error) {
@@ -113,11 +200,19 @@ router.post("/signup", async (req, res) => {
 router.post("/login", async (req, res) => {
   try {
     const email = req.body.email?.trim().toLowerCase();
-    const { password } = req.body;
+    const { password, rememberMe } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({
         error: "Email and password are required",
+      });
+    }
+
+    const loginKey = getLoginKey(req, email);
+
+    if (isLoginLocked(loginKey)) {
+      return res.status(429).json({
+        error: "Too many failed login attempts. Please try again later.",
       });
     }
 
@@ -131,6 +226,8 @@ router.post("/login", async (req, res) => {
     );
 
     if (result.rows.length === 0) {
+      recordFailedLogin(loginKey);
+
       return res.status(401).json({
         error: "Invalid email or password",
       });
@@ -141,16 +238,22 @@ router.post("/login", async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
+      recordFailedLogin(loginKey);
+
       return res.status(401).json({
         error: "Invalid email or password",
       });
     }
 
-    const token = createToken(user);
+    loginAttempts.delete(loginKey);
+
+    const tokenData = createToken(user, rememberMe ? "30d" : "1d");
+
+    await storeUserToken(user.id, tokenData);
 
     res.json({
       success: true,
-      token,
+      token: tokenData.token,
       user: cleanUser(user),
     });
   } catch (error) {
@@ -273,12 +376,14 @@ router.post("/reset-password", async (req, res) => {
       [hashedPassword, user.id]
     );
 
-    const token = createToken(user);
+    const tokenData = createToken(user);
+
+    await storeUserToken(user.id, tokenData);
 
     res.json({
       success: true,
       message: "Password reset successfully",
-      token,
+      token: tokenData.token,
       user: cleanUser(user),
     });
   } catch (error) {

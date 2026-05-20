@@ -17,6 +17,8 @@ const initializeDatabase = async () => {
         country VARCHAR(100) DEFAULT 'Egypt',
         avatar TEXT,
         role VARCHAR(20) DEFAULT 'user',
+        token_hash TEXT,
+        token_expires TIMESTAMP WITH TIME ZONE,
         reset_token TEXT,
         reset_token_expires TIMESTAMP WITH TIME ZONE,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -144,6 +146,8 @@ const initializeDatabase = async () => {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT 'Egypt';
       ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS token_hash TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS token_expires TIMESTAMP WITH TIME ZONE;
 
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS programme TEXT;
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS price VARCHAR(100);
