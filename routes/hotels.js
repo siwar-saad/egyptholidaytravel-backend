@@ -1,8 +1,35 @@
 const express = require("express");
 const router = express.Router();
+const fs = require("fs/promises");
+const path = require("path");
 const pool = require("../config/database");
 
 const adminMiddleware = require("../middleware/adminMiddleware");
+
+const normalizeJsonArray = (value) => {
+  if (Array.isArray(value)) return value;
+  if (!value) return [];
+
+  try {
+    const parsed = typeof value === "string" ? JSON.parse(value) : value;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const uploadDir = path.join(__dirname, "..", "public", "images", "hotels");
+
+const slugifyFileName = (fileName) => {
+  const ext = path.extname(fileName || "").toLowerCase();
+  const baseName = path
+    .basename(fileName || "hotel", ext)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return `${baseName || "hotel"}-${Date.now()}${ext}`;
+};
 
 /* =======================================================
    PUBLIC - GET HOTELS
@@ -13,7 +40,7 @@ router.get("/", async (req, res) => {
     const result = await pool.query(`
       SELECT *
       FROM hotels
-      ORDER BY id DESC
+      ORDER BY COALESCE(display_order, 0), id DESC
     `);
 
     res.json(result.rows);
@@ -24,6 +51,63 @@ router.get("/", async (req, res) => {
     res.status(500).json({
       error: "Unable to load hotels",
     });
+  }
+});
+
+/* =======================================================
+   ADMIN ONLY - UPLOAD HOTEL IMAGE
+======================================================= */
+
+router.post("/upload-image", adminMiddleware, async (req, res) => {
+  try {
+    const { fileName, dataUrl } = req.body;
+
+    if (!fileName || !dataUrl) {
+      return res.status(400).json({
+        error: "Image file is required",
+      });
+    }
+
+    const match = dataUrl.match(/^data:(image\/(png|jpe?g|webp));base64,(.+)$/i);
+
+    if (!match) {
+      return res.status(400).json({
+        error: "Only PNG, JPG and WEBP images are allowed",
+      });
+    }
+
+    const ext = path.extname(fileName).toLowerCase();
+    const allowedExtensions = [".png", ".jpg", ".jpeg", ".webp"];
+
+    if (!allowedExtensions.includes(ext)) {
+      return res.status(400).json({
+        error: "Invalid image extension",
+      });
+    }
+
+    const buffer = Buffer.from(match[3], "base64");
+    const maxSize = 5 * 1024 * 1024;
+
+    if (buffer.length > maxSize) {
+      return res.status(400).json({
+        error: "Image must be 5MB or smaller",
+      });
+    }
+
+    await fs.mkdir(uploadDir, { recursive: true });
+
+    const safeFileName = slugifyFileName(fileName);
+    const filePath = path.join(uploadDir, safeFileName);
+
+    await fs.writeFile(filePath, buffer);
+
+    res.status(201).json({
+      success: true,
+      url: `/images/hotels/${safeFileName}`,
+    });
+  } catch (error) {
+    console.error("Upload hotel image error:", error);
+    res.status(500).json({ error: "Unable to upload hotel image" });
   }
 });
 /* =======================================================
@@ -37,9 +121,19 @@ router.post("/add", adminMiddleware, async (req, res) => {
       city,
       meal,
       image,
+      gallery,
       description,
+      groupTitle,
+      group_title,
+      groupSubtitle,
+      group_subtitle,
+      periods,
+      displayOrder,
+      display_order,
       singleRoom,
+      single_room,
       doubleRoom,
+      double_room,
       price,
     } = req.body;
 
@@ -57,12 +151,17 @@ router.post("/add", adminMiddleware, async (req, res) => {
         city,
         meal,
         image,
+        gallery,
         description,
+        group_title,
+        group_subtitle,
+        periods,
+        display_order,
         single_room,
         double_room,
         price
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
       RETURNING *
       `,
       [
@@ -70,9 +169,14 @@ router.post("/add", adminMiddleware, async (req, res) => {
         city || "",
         meal || "",
         image || "",
+        JSON.stringify(normalizeJsonArray(gallery)),
         description || "",
-        singleRoom || null,
-        doubleRoom || null,
+        groupTitle || group_title || "",
+        groupSubtitle || group_subtitle || "",
+        JSON.stringify(normalizeJsonArray(periods)),
+        Number(displayOrder ?? display_order ?? 0),
+        singleRoom || single_room || null,
+        doubleRoom || double_room || null,
         price || null,
       ]
     );
@@ -97,9 +201,19 @@ router.put("/:id", adminMiddleware, async (req, res) => {
       city,
       meal,
       image,
+      gallery,
       description,
+      groupTitle,
+      group_title,
+      groupSubtitle,
+      group_subtitle,
+      periods,
+      displayOrder,
+      display_order,
       singleRoom,
+      single_room,
       doubleRoom,
+      double_room,
       price,
     } = req.body;
 
@@ -111,11 +225,16 @@ router.put("/:id", adminMiddleware, async (req, res) => {
         city = $2,
         meal = $3,
         image = $4,
-        description = $5,
-        single_room = $6,
-        double_room = $7,
-        price = $8
-      WHERE id = $9
+        gallery = $5,
+        description = $6,
+        group_title = $7,
+        group_subtitle = $8,
+        periods = $9,
+        display_order = $10,
+        single_room = $11,
+        double_room = $12,
+        price = $13
+      WHERE id = $14
       RETURNING *
       `,
       [
@@ -123,9 +242,14 @@ router.put("/:id", adminMiddleware, async (req, res) => {
         city || "",
         meal || "",
         image || "",
+        JSON.stringify(normalizeJsonArray(gallery)),
         description || "",
-        singleRoom || null,
-        doubleRoom || null,
+        groupTitle || group_title || "",
+        groupSubtitle || group_subtitle || "",
+        JSON.stringify(normalizeJsonArray(periods)),
+        Number(displayOrder ?? display_order ?? 0),
+        singleRoom || single_room || null,
+        doubleRoom || double_room || null,
         price || null,
         id,
       ]

@@ -62,7 +62,12 @@ const initializeDatabase = async () => {
         city VARCHAR(100),
         meal VARCHAR(100),
         image TEXT,
+        gallery JSONB DEFAULT '[]'::jsonb,
         description TEXT,
+        group_title VARCHAR(255),
+        group_subtitle TEXT,
+        periods JSONB DEFAULT '[]'::jsonb,
+        display_order INTEGER DEFAULT 0,
         single_room DECIMAL(10,2),
         double_room DECIMAL(10,2),
         price DECIMAL(10,2),
@@ -156,7 +161,12 @@ const initializeDatabase = async () => {
 
       ALTER TABLE hotels ADD COLUMN IF NOT EXISTS meal VARCHAR(100);
       ALTER TABLE hotels ADD COLUMN IF NOT EXISTS image TEXT;
+      ALTER TABLE hotels ADD COLUMN IF NOT EXISTS gallery JSONB DEFAULT '[]'::jsonb;
       ALTER TABLE hotels ADD COLUMN IF NOT EXISTS description TEXT;
+      ALTER TABLE hotels ADD COLUMN IF NOT EXISTS group_title VARCHAR(255);
+      ALTER TABLE hotels ADD COLUMN IF NOT EXISTS group_subtitle TEXT;
+      ALTER TABLE hotels ADD COLUMN IF NOT EXISTS periods JSONB DEFAULT '[]'::jsonb;
+      ALTER TABLE hotels ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
       ALTER TABLE hotels ADD COLUMN IF NOT EXISTS single_room DECIMAL(10,2);
       ALTER TABLE hotels ADD COLUMN IF NOT EXISTS double_room DECIMAL(10,2);
       ALTER TABLE hotels ADD COLUMN IF NOT EXISTS price DECIMAL(10,2);
