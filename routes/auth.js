@@ -41,13 +41,13 @@ router.post("/signup", async (req, res) => {
       lastName,
       first_name,
       last_name,
-      email,
       password,
       confirmPassword,
       phone,
       city,
       country,
     } = req.body;
+    const email = req.body.email?.trim().toLowerCase();
 
     if (!email || !password || !confirmPassword) {
       return res.status(400).json({
@@ -112,7 +112,8 @@ router.post("/signup", async (req, res) => {
 /* LOGIN */
 router.post("/login", async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const email = req.body.email?.trim().toLowerCase();
+    const { password } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({

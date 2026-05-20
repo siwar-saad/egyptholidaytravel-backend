@@ -1,12 +1,22 @@
 const express = require("express");
 const router = express.Router();
+const crypto = require("crypto");
 
 const pool = require("../config/database");
 const { sendEmail } = require("../services/emailService");
 
 const adminMiddleware = require("../middleware/adminMiddleware");
 
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
+
+const generatePassword = () => {
+  const alphabet =
+    "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+
+  return Array.from(crypto.randomBytes(12), (byte) => {
+    return alphabet[byte % alphabet.length];
+  }).join("");
+};
 
 /* Protect all admin routes */
 router.use(adminMiddleware);
@@ -341,17 +351,16 @@ router.post("/clients", async (req, res) => {
     const {
       first_name,
       last_name,
-      email,
       phone,
       city,
       country,
       role,
-      password,
     } = req.body;
+    const email = req.body.email?.trim().toLowerCase();
 
-    if (!email || !password) {
+    if (!email) {
       return res.status(400).json({
-        error: "Email and password are required",
+        error: "Email is required",
       });
     }
 
@@ -366,52 +375,95 @@ router.post("/clients", async (req, res) => {
       });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const generatedPassword = generatePassword();
 
-    const result = await pool.query(
-      `
-      INSERT INTO users
-      (
-        first_name,
-        last_name,
-        email,
-        phone,
-        city,
-        country,
-        role,
-        password
-      )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-      RETURNING
-        id,
-        first_name,
-        last_name,
-        email,
-        phone,
-        city,
-        country,
-        role,
-        created_at
-      `,
-      [
-        first_name || "",
-        last_name || "",
-        email,
-        phone || "",
-        city || "",
-        country || "Egypt",
-        role || "user",
-        hashedPassword,
-      ]
-    );
+    const hashedPassword = await bcrypt.hash(generatedPassword, 10);
 
-    res.status(201).json(result.rows[0]);
+    const client = await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      const result = await client.query(
+        `
+        INSERT INTO users
+        (
+          first_name,
+          last_name,
+          email,
+          phone,
+          city,
+          country,
+          role,
+          password
+        )
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+        RETURNING
+          id,
+          first_name,
+          last_name,
+          email,
+          phone,
+          city,
+          country,
+          role,
+          created_at
+        `,
+        [
+          first_name || "",
+          last_name || "",
+          email,
+          phone || "",
+          city || "",
+          country || "Egypt",
+          role || "user",
+          hashedPassword,
+        ]
+      );
+
+      const user = result.rows[0];
+
+      await sendEmail(
+        email,
+        "Welcome to Egypt Holiday Travel",
+        `
+        <div style="font-family: Arial; padding:20px;">
+          <h2>Welcome ${first_name || "Client"}</h2>
+
+          <p>Your account has been created successfully.</p>
+
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Password:</strong> ${generatedPassword}</p>
+
+          <p>Please login and change your password after first login.</p>
+
+          <br/>
+          <p>Egypt Holiday Travel</p>
+        </div>
+        `
+      );
+
+      await client.query("COMMIT");
+
+      res.status(201).json({
+        success: true,
+        message: "Client created successfully and email sent",
+        user,
+      });
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   } catch (error) {
     console.error("Create client error:", error);
-    res.status(500).json({ error: "Unable to create client" });
+
+    res.status(500).json({
+      error: "Unable to create client",
+    });
   }
 });
-
 /* UPDATE CLIENT */
 router.put("/clients/:id", async (req, res) => {
   try {
@@ -420,13 +472,13 @@ router.put("/clients/:id", async (req, res) => {
     const {
       first_name,
       last_name,
-      email,
       phone,
       city,
       country,
       role,
       password,
     } = req.body;
+    const email = req.body.email?.trim().toLowerCase();
 
     const existing = await pool.query(
       "SELECT id FROM users WHERE id = $1",
