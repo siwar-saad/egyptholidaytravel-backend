@@ -57,6 +57,9 @@ const cleanUser = (user) => ({
   firstName: user.first_name || "",
   lastName: user.last_name || "",
   name: `${user.first_name || ""} ${user.last_name || ""}`.trim(),
+  phone: user.phone || "",
+  city: user.city || "",
+  country: user.country || "",
 });
 
 const loginAttempts = new Map();
@@ -218,7 +221,7 @@ router.post("/login", async (req, res) => {
 
     const result = await pool.query(
       `
-      SELECT id, first_name, last_name, email, password, role
+      SELECT id, first_name, last_name, email, phone, city, country, password, role
       FROM users
       WHERE email = $1
       `,

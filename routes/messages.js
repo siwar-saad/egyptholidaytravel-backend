@@ -23,8 +23,8 @@ router.post("/", async (req, res) => {
 
     const result = await pool.query(
       `
-      INSERT INTO messages (name, email, phone, sender, message)
-      VALUES ($1, $2, $3, 'client', $4)
+      INSERT INTO messages (name, email, phone, sender, is_read, message)
+      VALUES ($1, $2, $3, 'client', false, $4)
       RETURNING *
       `,
       [name?.trim() || "Visitor", cleanEmail, phone || "", cleanMessage]

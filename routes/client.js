@@ -277,7 +277,7 @@ router.get("/messages", authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
       `
-      SELECT id, name, email, phone, sender, message, reply, replied_at, created_at
+      SELECT id, name, email, phone, sender, is_read, message, reply, replied_at, created_at
       FROM messages
       WHERE email = $1
       ORDER BY created_at DESC
@@ -291,6 +291,7 @@ router.get("/messages", authMiddleware, async (req, res) => {
       email: msg.email,
       phone: msg.phone || "",
       sender: msg.sender || "client",
+      isRead: Boolean(msg.is_read),
       message: msg.message,
       createdAt: msg.created_at?.toISOString(),
       reply: msg.reply || "",
@@ -312,6 +313,60 @@ router.get("/messages", authMiddleware, async (req, res) => {
   } catch (err) {
     res.status(500).json({
       error: "Messages error",
+      details: err.message,
+    });
+  }
+});
+
+/* ================= GET UNREAD MESSAGES COUNT ================= */
+
+router.get("/messages/unread-count", authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `
+      SELECT COUNT(*) AS count
+      FROM messages
+      WHERE LOWER(email) = LOWER($1)
+      AND sender = 'admin'
+      AND COALESCE(is_read, false) = false
+      `,
+      [req.user.email]
+    );
+
+    res.json({
+      count: Number(result.rows[0].count),
+    });
+  } catch (err) {
+    res.status(500).json({
+      error: "Unread messages count error",
+      details: err.message,
+    });
+  }
+});
+
+/* ================= MARK ADMIN MESSAGES AS READ ================= */
+
+router.put("/messages/read", authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `
+      UPDATE messages
+      SET is_read = true
+      WHERE LOWER(email) = LOWER($1)
+      AND sender = 'admin'
+      AND COALESCE(is_read, false) = false
+      RETURNING id
+      `,
+      [req.user.email]
+    );
+
+    res.json({
+      success: true,
+      readCount: result.rowCount,
+    });
+  } catch (err) {
+    res.status(500).json({
+      error: "Mark messages read error",
       details: err.message,
     });
   }
@@ -345,9 +400,9 @@ router.post("/messages", authMiddleware, async (req, res) => {
 
     const result = await pool.query(
       `
-      INSERT INTO messages (name, email, phone, sender, message)
-      VALUES ($1, $2, $3, 'client', $4)
-      RETURNING id, name, email, phone, sender, message, reply, replied_at, created_at
+      INSERT INTO messages (name, email, phone, sender, is_read, message)
+      VALUES ($1, $2, $3, 'client', false, $4)
+      RETURNING id, name, email, phone, sender, is_read, message, reply, replied_at, created_at
       `,
       [name, user.email, user.phone || "", message]
     );
@@ -360,6 +415,7 @@ router.post("/messages", authMiddleware, async (req, res) => {
       email: msg.email,
       phone: msg.phone || "",
       sender: msg.sender || "client",
+      isRead: Boolean(msg.is_read),
       message: msg.message,
       createdAt: msg.created_at?.toISOString(),
       reply: msg.reply || "",

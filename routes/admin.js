@@ -814,6 +814,7 @@ router.get("/messages", async (req, res) => {
         m.email,
         m.phone,
         m.sender,
+        m.is_read,
         m.message,
         m.reply,
         m.replied_at,
@@ -837,6 +838,7 @@ router.get("/messages", async (req, res) => {
       email: msg.email || "",
       phone: msg.phone || "",
       sender: msg.sender || "client",
+      isRead: Boolean(msg.is_read),
       message: msg.message || "",
       reply: msg.reply || "",
       createdAt: msg.created_at?.toISOString(),
@@ -860,6 +862,62 @@ router.get("/messages", async (req, res) => {
 
     res.status(500).json({
       error: "Unable to get messages",
+    });
+  }
+});
+
+router.get("/messages/unread-count", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT COUNT(*) AS count
+      FROM messages
+      WHERE COALESCE(sender, 'client') = 'client'
+      AND COALESCE(is_read, false) = false
+    `);
+
+    res.json({
+      count: Number(result.rows[0].count),
+    });
+  } catch (error) {
+    console.error("Unread messages count error:", error);
+
+    res.status(500).json({
+      error: "Unable to get unread messages count",
+    });
+  }
+});
+
+router.put("/messages/read", async (req, res) => {
+  try {
+    const email = req.body.email?.trim().toLowerCase();
+
+    if (!email) {
+      return res.status(400).json({
+        error: "Email is required",
+      });
+    }
+
+    const result = await pool.query(
+      `
+      UPDATE messages
+      SET is_read = true
+      WHERE LOWER(email) = LOWER($1)
+      AND COALESCE(sender, 'client') = 'client'
+      AND COALESCE(is_read, false) = false
+      RETURNING id
+      `,
+      [email]
+    );
+
+    res.json({
+      success: true,
+      readCount: result.rowCount,
+    });
+  } catch (error) {
+    console.error("Mark messages read error:", error);
+
+    res.status(500).json({
+      error: "Unable to mark messages as read",
     });
   }
 });
@@ -905,8 +963,8 @@ router.put("/messages/:id/reply", async (req, res) => {
 
     const result = await pool.query(
       `
-      INSERT INTO messages (name, email, phone, sender, message)
-      VALUES ($1, $2, $3, 'admin', $4)
+      INSERT INTO messages (name, email, phone, sender, is_read, message)
+      VALUES ($1, $2, $3, 'admin', false, $4)
       RETURNING *
       `,
       [

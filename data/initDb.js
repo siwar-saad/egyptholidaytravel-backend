@@ -111,6 +111,7 @@ const initializeDatabase = async () => {
         email VARCHAR(255),
         phone VARCHAR(50),
         sender VARCHAR(20) DEFAULT 'client',
+        is_read BOOLEAN DEFAULT false,
         message TEXT NOT NULL,
         reply TEXT DEFAULT '',
         replied_at TIMESTAMP WITH TIME ZONE,
@@ -179,6 +180,7 @@ const initializeDatabase = async () => {
 
       ALTER TABLE messages ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
       ALTER TABLE messages ADD COLUMN IF NOT EXISTS sender VARCHAR(20) DEFAULT 'client';
+      ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT false;
       ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply TEXT DEFAULT '';
       ALTER TABLE messages ADD COLUMN IF NOT EXISTS replied_at TIMESTAMP WITH TIME ZONE;
     `);
