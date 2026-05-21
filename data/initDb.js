@@ -109,8 +109,11 @@ const initializeDatabase = async () => {
         id SERIAL PRIMARY KEY,
         name VARCHAR(150),
         email VARCHAR(255),
+        phone VARCHAR(50),
+        sender VARCHAR(20) DEFAULT 'client',
         message TEXT NOT NULL,
         reply TEXT DEFAULT '',
+        replied_at TIMESTAMP WITH TIME ZONE,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -173,6 +176,11 @@ const initializeDatabase = async () => {
       ALTER TABLE hotels ADD COLUMN IF NOT EXISTS price DECIMAL(10,2);
 
       ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_type VARCHAR(50) DEFAULT 'package';
+
+      ALTER TABLE messages ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
+      ALTER TABLE messages ADD COLUMN IF NOT EXISTS sender VARCHAR(20) DEFAULT 'client';
+      ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply TEXT DEFAULT '';
+      ALTER TABLE messages ADD COLUMN IF NOT EXISTS replied_at TIMESTAMP WITH TIME ZONE;
     `);
 
     /* INSERT DESTINATIONS */

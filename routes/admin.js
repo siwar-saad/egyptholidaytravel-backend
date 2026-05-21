@@ -644,6 +644,9 @@ router.put("/clients/:id", async (req, res) => {
 
 /* DELETE CLIENT */
 router.delete("/clients/:id", adminMiddleware, async (req, res) => {
+  const client = await pool.connect();
+  let transactionStarted = false;
+
   try {
     const { id } = req.params;
 
@@ -653,7 +656,120 @@ router.delete("/clients/:id", adminMiddleware, async (req, res) => {
       });
     }
 
-    const result = await pool.query(
+    await client.query("BEGIN");
+    transactionStarted = true;
+
+    const tableExists = async (tableName) => {
+      const result = await client.query(
+        "SELECT to_regclass($1) AS table_name",
+        [`public.${tableName}`]
+      );
+
+      return Boolean(result.rows[0].table_name);
+    };
+
+    const columnExists = async (tableName, columnName) => {
+      const result = await client.query(
+        `
+        SELECT EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+          AND table_name = $1
+          AND column_name = $2
+        ) AS exists
+        `,
+        [tableName, columnName]
+      );
+
+      return Boolean(result.rows[0].exists);
+    };
+
+    const userResult = await client.query(
+      `
+      SELECT id, email
+      FROM users
+      WHERE id = $1
+      `,
+      [id]
+    );
+
+    if (userResult.rows.length === 0) {
+      await client.query("ROLLBACK");
+
+      return res.status(404).json({
+        error: "Client not found",
+      });
+    }
+
+    const userEmail = userResult.rows[0].email;
+
+    if (
+      await tableExists("messages") &&
+      await columnExists("messages", "email")
+    ) {
+      await client.query(
+        `
+        DELETE FROM messages
+        WHERE LOWER(email) = LOWER($1)
+        `,
+        [userEmail]
+      );
+    }
+
+    if (
+      await tableExists("bookings") &&
+      await columnExists("bookings", "customer_info")
+    ) {
+      await client.query(
+        `
+        DELETE FROM bookings
+        WHERE LOWER(customer_info->>'email') = LOWER($1)
+        `,
+        [userEmail]
+      );
+    }
+
+    if (
+      await tableExists("hotel_bookings") &&
+      await columnExists("hotel_bookings", "customer_info")
+    ) {
+      await client.query(
+        `
+        DELETE FROM hotel_bookings
+        WHERE LOWER(customer_info->>'email') = LOWER($1)
+        `,
+        [userEmail]
+      );
+    }
+
+    if (
+      await tableExists("payments") &&
+      await columnExists("payments", "client")
+    ) {
+      await client.query(
+        `
+        DELETE FROM payments
+        WHERE LOWER(client) = LOWER($1)
+        `,
+        [userEmail]
+      );
+    }
+
+    if (
+      await tableExists("subscribers") &&
+      await columnExists("subscribers", "email")
+    ) {
+      await client.query(
+        `
+        DELETE FROM subscribers
+        WHERE LOWER(email) = LOWER($1)
+        `,
+        [userEmail]
+      );
+    }
+
+    const result = await client.query(
       `
       DELETE FROM users
       WHERE id = $1
@@ -662,23 +778,25 @@ router.delete("/clients/:id", adminMiddleware, async (req, res) => {
       [id]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        error: "Client not found",
-      });
-    }
+    await client.query("COMMIT");
 
     res.json({
       success: true,
-      message: "Client deleted successfully",
+      message: "Client and related data deleted successfully",
     });
 
   } catch (error) {
+    if (transactionStarted) {
+      await client.query("ROLLBACK");
+    }
+
     console.error("Delete client error:", error);
 
     res.status(500).json({
       error: "Unable to delete client",
     });
+  } finally {
+    client.release();
   }
 });
 
@@ -690,12 +808,53 @@ router.delete("/clients/:id", adminMiddleware, async (req, res) => {
 router.get("/messages", async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT *
-      FROM messages
-      ORDER BY created_at DESC
+      SELECT
+        m.id,
+        m.name,
+        m.email,
+        m.phone,
+        m.sender,
+        m.message,
+        m.reply,
+        m.replied_at,
+        m.created_at,
+        u.id AS user_id,
+        u.first_name,
+        u.last_name
+      FROM messages m
+      LEFT JOIN users u
+        ON LOWER(u.email) = LOWER(m.email)
+      ORDER BY m.created_at DESC
     `);
 
-    res.json(result.rows);
+    const messages = result.rows.map((msg) => ({
+      id: msg.id,
+      isRegisteredUser: Boolean(msg.user_id),
+      name:
+        `${msg.first_name || ""} ${msg.last_name || ""}`.trim() ||
+        msg.name ||
+        (msg.user_id ? "Client" : "Visitor"),
+      email: msg.email || "",
+      phone: msg.phone || "",
+      sender: msg.sender || "client",
+      message: msg.message || "",
+      reply: msg.reply || "",
+      createdAt: msg.created_at?.toISOString(),
+      date: msg.created_at?.toISOString().split("T")[0],
+      dateTime: msg.created_at?.toLocaleString("en-GB", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }),
+      repliedAt: msg.replied_at?.toISOString().split("T")[0] || "",
+      repliedAtTime: msg.replied_at
+        ? msg.replied_at.toLocaleString("en-GB", {
+            dateStyle: "medium",
+            timeStyle: "short",
+          })
+        : "",
+    }));
+
+    res.json(messages);
   } catch (error) {
     console.error("Get messages error:", error);
 
@@ -716,46 +875,86 @@ router.put("/messages/:id/reply", async (req, res) => {
       });
     }
 
-    const result = await pool.query(
+    const originalResult = await pool.query(
       `
-      UPDATE messages
-      SET reply = $1
-      WHERE id = $2
-      RETURNING *
+      SELECT
+        m.name,
+        m.email,
+        m.phone,
+        u.first_name,
+        u.last_name
+      FROM messages m
+      LEFT JOIN users u
+        ON LOWER(u.email) = LOWER(m.email)
+      WHERE m.id = $1
       `,
-      [reply, id]
+      [id]
     );
 
-    if (result.rows.length === 0) {
+    if (originalResult.rows.length === 0) {
       return res.status(404).json({
         error: "Message not found",
       });
     }
 
+    const originalMessage = originalResult.rows[0];
+    const clientName =
+      `${originalMessage.first_name || ""} ${originalMessage.last_name || ""}`.trim() ||
+      originalMessage.name ||
+      "Client";
+
+    const result = await pool.query(
+      `
+      INSERT INTO messages (name, email, phone, sender, message)
+      VALUES ($1, $2, $3, 'admin', $4)
+      RETURNING *
+      `,
+      [
+        clientName,
+        originalMessage.email || "",
+        originalMessage.phone || "",
+        reply.trim(),
+      ]
+    );
+
     const message = result.rows[0];
 
-    if (message.email) {
-      await sendEmail(
-        message.email,
-        "Reply from Egypt Holiday",
-        `
-          <h2>Hello ${message.name || "Client"},</h2>
+    let emailSent = false;
+    const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+      message.email || ""
+    );
 
-          <p>${reply}</p>
+    if (isValidEmail) {
+      try {
+        await sendEmail(
+          message.email,
+          "Reply from Egypt Holiday",
+          `
+            <h2>Hello ${clientName},</h2>
 
-          <br />
+            <p>${reply.trim()}</p>
 
-          <p>
-            Best regards,<br />
-            Egypt Holiday Team
-          </p>
-        `
-      );
+            <br />
+
+            <p>
+              Best regards,<br />
+              Egypt Holiday Team
+            </p>
+          `
+        );
+
+        emailSent = true;
+      } catch (emailError) {
+        console.error("Reply email error:", emailError.message);
+      }
     }
 
     res.json({
       success: true,
-      message: "Reply sent successfully",
+      emailSent,
+      message: emailSent
+        ? "Reply saved and email sent successfully"
+        : "Reply saved, but email was not sent",
       data: message,
     });
   } catch (error) {

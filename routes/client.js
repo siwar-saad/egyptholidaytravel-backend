@@ -277,7 +277,7 @@ router.get("/messages", authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
       `
-      SELECT id, name, email, message, reply, created_at
+      SELECT id, name, email, phone, sender, message, reply, replied_at, created_at
       FROM messages
       WHERE email = $1
       ORDER BY created_at DESC
@@ -289,9 +289,23 @@ router.get("/messages", authMiddleware, async (req, res) => {
       id: msg.id,
       name: msg.name,
       email: msg.email,
+      phone: msg.phone || "",
+      sender: msg.sender || "client",
       message: msg.message,
+      createdAt: msg.created_at?.toISOString(),
       reply: msg.reply || "",
+      repliedAt: msg.replied_at?.toISOString().split("T")[0] || "",
+      repliedAtTime: msg.replied_at
+        ? msg.replied_at.toLocaleString("en-GB", {
+            dateStyle: "medium",
+            timeStyle: "short",
+          })
+        : "",
       date: msg.created_at?.toISOString().split("T")[0],
+      dateTime: msg.created_at?.toLocaleString("en-GB", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }),
     }));
 
     res.json(messages);
@@ -317,7 +331,7 @@ router.post("/messages", authMiddleware, async (req, res) => {
 
     const userResult = await pool.query(
       `
-      SELECT first_name, last_name, email
+      SELECT first_name, last_name, email, phone
       FROM users
       WHERE id = $1
       `,
@@ -331,11 +345,11 @@ router.post("/messages", authMiddleware, async (req, res) => {
 
     const result = await pool.query(
       `
-      INSERT INTO messages (name, email, message)
-      VALUES ($1, $2, $3)
-      RETURNING id, name, email, message, created_at
+      INSERT INTO messages (name, email, phone, sender, message)
+      VALUES ($1, $2, $3, 'client', $4)
+      RETURNING id, name, email, phone, sender, message, reply, replied_at, created_at
       `,
-      [name, user.email, message]
+      [name, user.email, user.phone || "", message]
     );
 
     const msg = result.rows[0];
@@ -344,9 +358,23 @@ router.post("/messages", authMiddleware, async (req, res) => {
       id: msg.id,
       name: msg.name,
       email: msg.email,
+      phone: msg.phone || "",
+      sender: msg.sender || "client",
       message: msg.message,
-      reply: "",
+      createdAt: msg.created_at?.toISOString(),
+      reply: msg.reply || "",
+      repliedAt: msg.replied_at?.toISOString().split("T")[0] || "",
+      repliedAtTime: msg.replied_at
+        ? msg.replied_at.toLocaleString("en-GB", {
+            dateStyle: "medium",
+            timeStyle: "short",
+          })
+        : "",
       date: msg.created_at?.toISOString().split("T")[0],
+      dateTime: msg.created_at?.toLocaleString("en-GB", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }),
     });
   } catch (err) {
     res.status(500).json({
