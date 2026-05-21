@@ -198,7 +198,15 @@ router.get("/bookings", authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
       `
-      SELECT id, booking_reference, status, search_params, total_price, created_at
+      SELECT
+        id,
+        booking_reference,
+        booking_type,
+        status,
+        search_params,
+        selected_hotel,
+        total_price,
+        created_at
       FROM bookings
       WHERE customer_info->>'email' = $1
       ORDER BY created_at DESC
@@ -208,7 +216,15 @@ router.get("/bookings", authMiddleware, async (req, res) => {
 
     const bookings = result.rows.map((booking) => ({
       id: booking.id,
-      title: booking.search_params?.to || "Booking",
+      type: booking.booking_type || "package",
+      title:
+        booking.booking_type === "hotel"
+          ? booking.selected_hotel?.name || "Hotel"
+          : booking.search_params?.to || "Package",
+      hotelName: booking.selected_hotel?.name || "",
+      checkIn: booking.selected_hotel?.checkIn || "",
+      checkOut: booking.selected_hotel?.checkOut || "",
+      roomType: booking.selected_hotel?.roomType || "",
       date: booking.created_at?.toISOString().split("T")[0],
       status: booking.status || "Pending",
       details: booking.booking_reference || "No reference",

@@ -3,12 +3,13 @@ const router = express.Router();
 const pool = require("../config/database");
 
 const adminMiddleware = require("../middleware/adminMiddleware");
+const authMiddleware = require("../middleware/authMiddleware");
 
 /* =======================================================
    PUBLIC - CREATE HOTEL BOOKING
 ======================================================= */
 
-router.post("/reserve", async (req, res) => {
+router.post("/reserve", authMiddleware, async (req, res) => {
   try {
     const {
       selected_hotel,
@@ -18,6 +19,16 @@ router.post("/reserve", async (req, res) => {
     } = req.body;
 
     const bookingReference = `HOTEL-${Date.now()}`;
+    const normalizedCustomerInfo = {
+      ...(customer_info || {}),
+      name:
+        customer_info?.name ||
+        customer_info?.fullName ||
+        customer_info?.full_name ||
+        `${req.user.first_name || ""} ${req.user.last_name || ""}`.trim() ||
+        "",
+      email: req.user.email,
+    };
 
     const result = await pool.query(
       `
@@ -38,7 +49,7 @@ router.post("/reserve", async (req, res) => {
         bookingReference,
         "hotel",
         selected_hotel || {},
-        customer_info || {},
+        normalizedCustomerInfo,
         total_price || 0,
         search_params || {},
         "Pending",

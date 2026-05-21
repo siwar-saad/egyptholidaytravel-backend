@@ -80,6 +80,7 @@ const initializeDatabase = async () => {
       CREATE TABLE IF NOT EXISTS bookings (
         id SERIAL PRIMARY KEY,
         booking_reference VARCHAR(100) UNIQUE,
+        booking_type VARCHAR(50) DEFAULT 'package',
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         status VARCHAR(50) DEFAULT 'Pending',
         search_params JSONB,
@@ -170,6 +171,8 @@ const initializeDatabase = async () => {
       ALTER TABLE hotels ADD COLUMN IF NOT EXISTS single_room DECIMAL(10,2);
       ALTER TABLE hotels ADD COLUMN IF NOT EXISTS double_room DECIMAL(10,2);
       ALTER TABLE hotels ADD COLUMN IF NOT EXISTS price DECIMAL(10,2);
+
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_type VARCHAR(50) DEFAULT 'package';
     `);
 
     /* INSERT DESTINATIONS */

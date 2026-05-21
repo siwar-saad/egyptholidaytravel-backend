@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../config/database");
 const adminMiddleware = require("../middleware/adminMiddleware");
+const authMiddleware = require("../middleware/authMiddleware");
 
 /* ADMIN ONLY: get all bookings */
 router.get("/", adminMiddleware, async (req, res) => {
@@ -19,8 +20,8 @@ router.get("/", adminMiddleware, async (req, res) => {
   }
 });
 
-/* PUBLIC: create booking */
-router.post("/", async (req, res) => {
+/* AUTHENTICATED CLIENT: create booking */
+router.post("/", authMiddleware, async (req, res) => {
   try {
     const {
       booking_reference,
@@ -31,6 +32,16 @@ router.post("/", async (req, res) => {
       customer_info,
       booking_type,
     } = req.body;
+    const normalizedCustomerInfo = {
+      ...(customer_info || {}),
+      name:
+        customer_info?.name ||
+        customer_info?.fullName ||
+        customer_info?.full_name ||
+        `${req.user.first_name || ""} ${req.user.last_name || ""}`.trim() ||
+        "",
+      email: req.user.email,
+    };
 
     const result = await pool.query(
       `
@@ -53,7 +64,7 @@ router.post("/", async (req, res) => {
         selected_hotel || null,
         selected_activities || null,
         total_price || 0,
-        customer_info || {},
+        normalizedCustomerInfo,
         booking_type || "package",
       ]
     );
