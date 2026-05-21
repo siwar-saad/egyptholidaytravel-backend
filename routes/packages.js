@@ -1,56 +1,43 @@
 const express = require("express");
-const router = express.Router();
 const pool = require("../config/database");
 
-// GET ALL PACKAGES
+const router = express.Router();
+
+const mapPackage = (row) => ({
+  id: row.id,
+  title: row.title || row.name || "",
+  name: row.name || row.title || "",
+  backendName: row.backend_name || row.title || row.name || "",
+  backend_name: row.backend_name || row.title || row.name || "",
+  route: row.route || "",
+  duration: row.duration || "",
+  transfer: row.transfer || "",
+  transferReduction: row.transfer_reduction || "",
+  transfer_reduction: row.transfer_reduction || "",
+  startPrice: row.start_price || row.price || "",
+  start_price: row.start_price || row.price || "",
+  programme: row.programme || "",
+  price: row.price || row.start_price || "",
+  visibility: row.visibility || "Private",
+  image: row.image || "",
+  options: row.options || [],
+  itinerary: row.itinerary || [],
+  displayOrder: row.display_order || 0,
+});
+
 router.get("/", async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT *
       FROM packages
-      ORDER BY id ASC
+      WHERE visibility = 'Published'
+      ORDER BY display_order ASC, id DESC
     `);
 
-    res.json(result.rows);
+    res.json(result.rows.map(mapPackage));
   } catch (error) {
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
-// ADD PACKAGE
-router.post("/", async (req, res) => {
-  try {
-    const { title, image } = req.body;
-
-    const result = await pool.query(
-      `
-      INSERT INTO packages (title, image)
-      VALUES ($1, $2)
-      RETURNING *
-      `,
-      [title, image]
-    );
-
-    res.status(201).json(result.rows[0]);
-  } catch (error) {
-    res.status(500).json({ error: "Add package error" });
-  }
-});
-
-// DELETE PACKAGE
-router.delete("/:id", async (req, res) => {
-  try {
-    await pool.query(
-      `
-      DELETE FROM packages
-      WHERE id = $1
-      `,
-      [req.params.id]
-    );
-
-    res.json({ message: "Package deleted" });
-  } catch (error) {
-    res.status(500).json({ error: "Delete package error" });
+    console.error("Public packages error:", error);
+    res.status(500).json({ error: "Unable to get packages" });
   }
 });
 

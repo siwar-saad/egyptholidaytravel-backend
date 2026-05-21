@@ -1,0 +1,241 @@
+INSERT INTO packages
+(
+  title,
+  name,
+  backend_name,
+  route,
+  duration,
+  transfer,
+  transfer_reduction,
+  start_price,
+  programme,
+  visibility,
+  image,
+  options,
+  itinerary,
+  display_order
+)
+VALUES
+(
+  '( Cairo - Hurghada ) 5 Nights',
+  '( Cairo - Hurghada ) 5 Nights',
+  '( Cairo - Hurghada ) 5 Nights',
+  'Cairo - Hurghada',
+  '5 Nights',
+  'Round-trip transfer by Bus from Cairo to Hurghada',
+  '',
+  'From 345$',
+  '',
+  'Published',
+  '/images/packages/cairo-hurghada1.png',
+  '[
+    {
+      "title": "Option 01",
+      "rows": [
+        {"city":"Cairo","nights":"2 Nights","hotel":"Hilton Cairo Grand Nile","meal":"Breakfast","sgl":"710$","dbl":"400$","tpl":"345$"},
+        {"city":"Hurghada","nights":"3 Nights","hotel":"Albatros Aqua Blu Hurghada","meal":"All Inclusive","sgl":"","dbl":"","tpl":""}
+      ]
+    },
+    {
+      "title": "Option 02",
+      "rows": [
+        {"city":"Cairo","nights":"2 Nights","hotel":"Ramses Hilton","meal":"Breakfast","sgl":"790$","dbl":"465$","tpl":"430$"},
+        {"city":"Hurghada","nights":"3 Nights","hotel":"Cleopatra Luxury Makadi Bay","meal":"All Inclusive","sgl":"","dbl":"","tpl":""}
+      ]
+    }
+  ]'::jsonb,
+  '[]'::jsonb,
+  1
+),
+(
+  '( Cairo - Hurghada ) 6 Nights',
+  '( Cairo - Hurghada ) 6 Nights',
+  '( Cairo - Hurghada ) 6 Nights',
+  'Cairo - Hurghada',
+  '6 Nights',
+  'Round-trip transfer by Bus from Cairo to Hurghada',
+  '',
+  'From 415$',
+  '',
+  'Published',
+  '/images/packages/cairo-hurghada2.png',
+  '[
+    {
+      "title": "Option 01",
+      "rows": [
+        {"city":"Cairo","nights":"2 Nights","hotel":"Hilton Cairo Grand Nile","meal":"Breakfast","sgl":"845$","dbl":"475$","tpl":"415$"},
+        {"city":"Hurghada","nights":"4 Nights","hotel":"Albatros Aqua Blu Hurghada","meal":"All Inclusive","sgl":"","dbl":"","tpl":""}
+      ]
+    },
+    {
+      "title": "Option 02",
+      "rows": [
+        {"city":"Cairo","nights":"2 Nights","hotel":"Ramses Hilton","meal":"Breakfast","sgl":"930$","dbl":"555$","tpl":"515$"},
+        {"city":"Hurghada","nights":"4 Nights","hotel":"Cleopatra Luxury Makadi Bay","meal":"All Inclusive","sgl":"","dbl":"","tpl":""}
+      ]
+    }
+  ]'::jsonb,
+  '[]'::jsonb,
+  2
+),
+(
+  '( Cairo - Alexandria ) 6 Nights',
+  '( Cairo - Alexandria ) 6 Nights',
+  '( Cairo - Alexandria ) 6 Nights',
+  'Cairo - Alexandria',
+  '6 Nights',
+  'Round-trip transfer by Bus from Cairo to Alexandria',
+  '',
+  'From 445$',
+  '',
+  'Published',
+  '/images/packages/cairo-alexandria1.png',
+  '[
+    {
+      "title": "Option 01",
+      "rows": [
+        {"city":"Cairo","nights":"4 Nights","hotel":"Hilton Cairo Grand Nile","meal":"Breakfast","sgl":"980$","dbl":"545$","tpl":"445$"},
+        {"city":"Alexandria","nights":"2 Nights","hotel":"Rixos Montaza Alexandria","meal":"Breakfast","sgl":"","dbl":"","tpl":""}
+      ]
+    },
+    {
+      "title": "Option 02",
+      "rows": [
+        {"city":"Cairo","nights":"4 Nights","hotel":"Ramses Hilton","meal":"Breakfast","sgl":"1060$","dbl":"575$","tpl":"460$"},
+        {"city":"Alexandria","nights":"2 Nights","hotel":"SUNRISE Alex Avenue Resort (Select)","meal":"Breakfast","sgl":"","dbl":"","tpl":""}
+      ]
+    }
+  ]'::jsonb,
+  '[]'::jsonb,
+  3
+),
+(
+  '( Cairo - Luxor ) 6 Nights',
+  '( Cairo - Luxor ) 6 Nights',
+  '( Cairo - Luxor ) 6 Nights',
+  'Cairo - Luxor',
+  '6 Nights',
+  'Round-trip transfer by Sleeping Cabin Train from Cairo to Luxor',
+  'Transfer Reduction: 320$ per person',
+  'From 620$ / 535 EUR',
+  '',
+  'Published',
+  '/images/packages/cairo-luxor2.png',
+  '[
+    {
+      "title": "Option 01",
+      "rows": [
+        {"city":"Cairo","nights":"3 Nights","hotel":"Hilton Cairo Grand Nile","meal":"Breakfast","sgl":"995$","dbl":"690$","tpl":"620$"},
+        {"city":"Luxor","nights":"3 Nights","hotel":"Steigenberger Nile Palace Hotel Luxor","meal":"Breakfast","sgl":"","dbl":"","tpl":""}
+      ]
+    },
+    {
+      "title": "Option 02",
+      "rows": [
+        {"city":"Cairo","nights":"3 Nights","hotel":"Ramses Hilton","meal":"Breakfast","sgl":"Contact us","dbl":"Contact us","tpl":"Contact us"},
+        {"city":"Luxor","nights":"3 Nights","hotel":"To be confirmed","meal":"Breakfast","sgl":"","dbl":"","tpl":""}
+      ]
+    }
+  ]'::jsonb,
+  '[]'::jsonb,
+  4
+),
+(
+  'Cairo & Sharm El Sheikh Program',
+  'Cairo & Sharm El Sheikh Program',
+  'Cairo & Sharm El Sheikh Program',
+  'Cairo - Sharm El Sheikh',
+  '6 Days / 5 Nights',
+  'Private transfers included during the program',
+  '',
+  'Contact us',
+  '',
+  'Published',
+  '/images/packages/cairo-sharm.png',
+  '[]'::jsonb,
+  '[
+    {"day":"Day 1","title":"Arrival in Cairo & Pyramids Tour","details":["Meet & assist service upon arrival at Cairo Airport.","Private transfer to the hotel.","Check-in and overnight in Cairo.","Full-day tour including Giza Pyramids, The Sphinx, and Grand Egyptian Museum.","Professional English-speaking tour guide during the tour.","Return to the hotel and overnight."]},
+    {"day":"Day 2","title":"Islamic Cairo Tour","details":["Breakfast at the hotel.","Full-day tour in Islamic Cairo including Al Muizz Street, Al Hussein Mosque, Khan El Khalili Bazaar, and Al Azhar Mosque.","Free time for shopping and exploring the historical atmosphere.","Private transportation and professional tour guide included.","Return to the hotel and overnight."]},
+    {"day":"Day 3","title":"Transfer to Sharm El Sheikh","details":["Transfer to the hotel and check-in.","Free time at leisure.","Overnight in Sharm El Sheikh."]},
+    {"day":"Day 4","title":"Boat Trip & Snorkeling","details":["Boat trip to Tiran Island or Ras Mohammed National Park.","Snorkeling experience with lunch onboard.","Round-trip transfers included.","Overnight in Sharm El Sheikh."]},
+    {"day":"Day 5","title":"Desert Safari Experience","details":["Desert safari experience with quad biking or buggy ride.","Bedouin dinner with oriental show.","Overnight in Sharm El Sheikh."]},
+    {"day":"Day 6","title":"Departure","details":["Breakfast at the hotel.","Transfer to Cairo airport for final departure."]}
+  ]'::jsonb,
+  5
+),
+(
+  'Cairo & North Coast Package',
+  'Cairo & North Coast Package',
+  'Cairo & North Coast Package - 6 Nights / 7 Days',
+  'Cairo - North Coast',
+  '6 Nights / 7 Days',
+  '3 Nights in Cairo + 3 Nights in North Coast with transfer included',
+  '',
+  'From 1,293$',
+  '',
+  'Published',
+  '/images/packages/alexandria.png',
+  '[
+    {
+      "title": "Luxury Package",
+      "rows": [
+        {"city":"Cairo","nights":"3 Nights","hotel":"Hilton Ramses","meal":"To be confirmed","sgl":"1,562$","dbl":"1,781$","tpl":"2,346$"},
+        {"city":"North Coast","nights":"3 Nights","hotel":"Rixos Premium Alamein","meal":"To be confirmed","sgl":"","dbl":"","tpl":""}
+      ]
+    },
+    {
+      "title": "Premium Package",
+      "rows": [
+        {"city":"Cairo","nights":"3 Nights","hotel":"Fairmont Nile City","meal":"To be confirmed","sgl":"1,925$","dbl":"2,150$","tpl":"2,500$"},
+        {"city":"North Coast","nights":"3 Nights","hotel":"Gewan Palace","meal":"To be confirmed","sgl":"","dbl":"","tpl":""}
+      ]
+    },
+    {
+      "title": "Standard Package",
+      "rows": [
+        {"city":"Cairo","nights":"3 Nights","hotel":"Hilton Ramses","meal":"To be confirmed","sgl":"1,293$","dbl":"1,457$","tpl":"1,902$"},
+        {"city":"North Coast","nights":"3 Nights","hotel":"Azur One Eleven","meal":"To be confirmed","sgl":"","dbl":"","tpl":""}
+      ]
+    }
+  ]'::jsonb,
+  '[]'::jsonb,
+  6
+),
+(
+  'Cairo & Ain El Sokhna Package',
+  'Cairo & Ain El Sokhna Package',
+  'Cairo & Ain El Sokhna Package - 6 Nights / 7 Days',
+  'Cairo - Ain El Sokhna',
+  '6 Nights / 7 Days',
+  '3 Nights in Cairo + 3 Nights in Ain El Sokhna with transfer included',
+  '',
+  'From 1,072$',
+  '',
+  'Published',
+  '/images/packages/ainsokhna.jpg',
+  '[
+    {
+      "title": "Luxury Package",
+      "rows": [
+        {"city":"Cairo","nights":"3 Nights","hotel":"The St. Regis Cairo","meal":"To be confirmed","sgl":"1,825$","dbl":"1,900$","tpl":"2,500$"},
+        {"city":"Ain El Sokhna","nights":"3 Nights","hotel":"Movenpick El Sokhna","meal":"To be confirmed","sgl":"","dbl":"","tpl":""}
+      ]
+    },
+    {
+      "title": "Premium Package",
+      "rows": [
+        {"city":"Cairo","nights":"3 Nights","hotel":"Hilton Ramses","meal":"To be confirmed","sgl":"1,084$","dbl":"1,260$","tpl":"1,716$"},
+        {"city":"Ain El Sokhna","nights":"3 Nights","hotel":"Coral Sea Beach","meal":"To be confirmed","sgl":"","dbl":"","tpl":""}
+      ]
+    },
+    {
+      "title": "Standard Package",
+      "rows": [
+        {"city":"Cairo","nights":"3 Nights","hotel":"Fairmont Nile City","meal":"To be confirmed","sgl":"1,072$","dbl":"1,214$","tpl":"1,656$"},
+        {"city":"Ain El Sokhna","nights":"3 Nights","hotel":"Stella Grand","meal":"To be confirmed","sgl":"","dbl":"","tpl":""}
+      ]
+    }
+  ]'::jsonb,
+  '[]'::jsonb,
+  7
+);

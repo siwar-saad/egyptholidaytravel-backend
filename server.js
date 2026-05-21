@@ -7,7 +7,7 @@ const pool = require("./config/database");
 const initializeDatabase = require("./data/initDb");
 
 const authRoutes = require("./routes/auth");
-const adminRoutes = require("./routes/admin");
+const adminRoutes = require("./routes/admin/admin");
 const clientRoutes = require("./routes/client");
 const packageRoutes = require("./routes/packages");
 const subscriberRoutes = require("./routes/subscribers");

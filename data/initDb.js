@@ -45,11 +45,21 @@ const initializeDatabase = async () => {
       CREATE TABLE IF NOT EXISTS packages (
         id SERIAL PRIMARY KEY,
         title VARCHAR(255) NOT NULL,
+        name VARCHAR(255),
+        backend_name VARCHAR(255),
+        route VARCHAR(255),
+        duration VARCHAR(100),
+        transfer TEXT,
+        transfer_reduction TEXT,
+        start_price VARCHAR(100),
         programme TEXT,
         price VARCHAR(100),
         pdf_status VARCHAR(50) DEFAULT 'Missing',
         visibility VARCHAR(50) DEFAULT 'Private',
         image TEXT,
+        options JSONB DEFAULT '[]'::jsonb,
+        itinerary JSONB DEFAULT '[]'::jsonb,
+        display_order INTEGER DEFAULT 0,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -160,9 +170,19 @@ const initializeDatabase = async () => {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS token_expires TIMESTAMP WITH TIME ZONE;
 
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS programme TEXT;
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS name VARCHAR(255);
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS backend_name VARCHAR(255);
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS route VARCHAR(255);
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS duration VARCHAR(100);
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS transfer TEXT;
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS transfer_reduction TEXT;
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS start_price VARCHAR(100);
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS price VARCHAR(100);
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS pdf_status VARCHAR(50) DEFAULT 'Missing';
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS visibility VARCHAR(50) DEFAULT 'Private';
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS options JSONB DEFAULT '[]'::jsonb;
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS itinerary JSONB DEFAULT '[]'::jsonb;
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
 
       ALTER TABLE hotels ADD COLUMN IF NOT EXISTS meal VARCHAR(100);
       ALTER TABLE hotels ADD COLUMN IF NOT EXISTS image TEXT;
