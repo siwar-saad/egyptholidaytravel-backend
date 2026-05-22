@@ -65,11 +65,20 @@ router.get("/hotels/reservations", async (req, res) => {
       id: booking.id,
       type: "hotel",
       client:
-        booking.customer_info?.name ||
         booking.customer_info?.fullName ||
+        booking.customer_info?.full_name ||
+        booking.customer_info?.name ||
         booking.customer_info?.email ||
         "Client",
+      email: booking.customer_info?.email || "",
+      phone: booking.customer_info?.phone || "",
+      travelers: booking.customer_info?.travelers || "",
       hotelName: booking.selected_hotel?.name || "Hotel",
+      city: booking.selected_hotel?.city || "",
+      mealPlan:
+        booking.selected_hotel?.mealPlan ||
+        booking.selected_hotel?.meal ||
+        "",
       checkIn: booking.selected_hotel?.checkIn || "",
       checkOut: booking.selected_hotel?.checkOut || "",
       roomType: booking.selected_hotel?.roomType || "",
@@ -77,6 +86,7 @@ router.get("/hotels/reservations", async (req, res) => {
       date: booking.created_at?.toISOString().split("T")[0],
       totalPrice: booking.total_price || 0,
       reference: booking.booking_reference,
+      notes: booking.customer_info?.notes || "",
     }));
 
     res.json(reservations);

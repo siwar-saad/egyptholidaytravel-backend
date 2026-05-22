@@ -13,18 +13,23 @@ router.post("/reserve", authMiddleware, async (req, res) => {
   try {
     const {
       selected_hotel,
+      hotel,
       customer_info,
+      customerInfo,
       total_price,
+      totalPrice,
       search_params,
     } = req.body;
+    const hotelData = selected_hotel || hotel || {};
+    const customerData = customer_info || customerInfo || {};
 
     const bookingReference = `HOTEL-${Date.now()}`;
     const normalizedCustomerInfo = {
-      ...(customer_info || {}),
+      ...customerData,
       name:
-        customer_info?.name ||
-        customer_info?.fullName ||
-        customer_info?.full_name ||
+        customerData.name ||
+        customerData.fullName ||
+        customerData.full_name ||
         `${req.user.first_name || ""} ${req.user.last_name || ""}`.trim() ||
         "",
       email: req.user.email,
@@ -48,9 +53,9 @@ router.post("/reserve", authMiddleware, async (req, res) => {
       [
         bookingReference,
         "hotel",
-        selected_hotel || {},
+        hotelData,
         normalizedCustomerInfo,
-        total_price || 0,
+        total_price || totalPrice || 0,
         search_params || {},
         "Pending",
       ]
