@@ -22,6 +22,69 @@ router.get("/reservations", async (req, res) => {
   }
 });
 
+router.post("/reservations", async (req, res) => {
+  try {
+    const {
+      packageName,
+      route,
+      duration,
+      travelDate,
+      roomType,
+      fullName,
+      email,
+      phone,
+      travelers,
+      notes,
+      totalPrice,
+    } = req.body;
+
+    if (!packageName || !fullName || !email) {
+      return res.status(400).json({
+        error: "Package, client name and email are required",
+      });
+    }
+
+    const result = await pool.query(
+      `
+      INSERT INTO bookings
+      (
+        booking_reference,
+        booking_type,
+        search_params,
+        customer_info,
+        total_price,
+        status
+      )
+      VALUES ($1, 'package', $2, $3, $4, 'Pending')
+      RETURNING *
+      `,
+      [
+        `PKG-${Date.now()}`,
+        {
+          name: packageName,
+          route: route || "",
+          duration: duration || "",
+          travelDate: travelDate || "",
+          roomType: roomType || "",
+        },
+        {
+          fullName,
+          email,
+          phone: phone || "",
+          travelers: travelers || "",
+          notes: notes || "",
+        },
+        totalPrice || 0,
+      ]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error("Create package reservation error:", error);
+    res.status(500).json({ error: "Unable to create package reservation" });
+  }
+});
+
 router.put("/reservations/:id/status", async (req, res) => {
   try {
     const { id } = req.params;
@@ -93,6 +156,71 @@ router.get("/hotels/reservations", async (req, res) => {
   } catch (error) {
     console.error("Hotel reservations error:", error);
     res.status(500).json({ error: "Unable to get hotel reservations" });
+  }
+});
+
+router.post("/hotels/reservations", async (req, res) => {
+  try {
+    const {
+      hotelName,
+      city,
+      mealPlan,
+      checkIn,
+      checkOut,
+      roomType,
+      fullName,
+      email,
+      phone,
+      travelers,
+      notes,
+      totalPrice,
+    } = req.body;
+
+    if (!hotelName || !fullName || !email) {
+      return res.status(400).json({
+        error: "Hotel, client name and email are required",
+      });
+    }
+
+    const result = await pool.query(
+      `
+      INSERT INTO bookings
+      (
+        booking_reference,
+        booking_type,
+        selected_hotel,
+        customer_info,
+        total_price,
+        status
+      )
+      VALUES ($1, 'hotel', $2, $3, $4, 'Pending')
+      RETURNING *
+      `,
+      [
+        `HOTEL-${Date.now()}`,
+        {
+          name: hotelName,
+          city: city || "",
+          mealPlan: mealPlan || "",
+          checkIn: checkIn || "",
+          checkOut: checkOut || "",
+          roomType: roomType || "",
+        },
+        {
+          fullName,
+          email,
+          phone: phone || "",
+          travelers: travelers || "",
+          notes: notes || "",
+        },
+        totalPrice || 0,
+      ]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error("Create hotel reservation error:", error);
+    res.status(500).json({ error: "Unable to create hotel reservation" });
   }
 });
 
