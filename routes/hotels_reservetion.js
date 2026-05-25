@@ -48,7 +48,16 @@ router.post("/reserve", authMiddleware, async (req, res) => {
         status
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING *
+      RETURNING
+        id,
+        booking_reference,
+        booking_type,
+        selected_hotel,
+        customer_info,
+        total_price,
+        search_params,
+        status,
+        created_at
       `,
       [
         bookingReference,
@@ -81,7 +90,15 @@ router.post("/reserve", authMiddleware, async (req, res) => {
 router.get("/reservations", adminMiddleware, async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT *
+      SELECT
+        id,
+        booking_reference,
+        booking_type,
+        selected_hotel,
+        customer_info,
+        total_price,
+        status,
+        created_at
       FROM bookings
       WHERE booking_type = 'hotel'
       ORDER BY created_at DESC
@@ -151,7 +168,16 @@ router.put(
         SET status = $1
         WHERE id = $2
         AND booking_type = 'hotel'
-        RETURNING *
+        RETURNING
+          id,
+          booking_reference,
+          booking_type,
+          selected_hotel,
+          customer_info,
+          total_price,
+          search_params,
+          status,
+          created_at
         `,
         [status, id]
       );

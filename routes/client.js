@@ -1,39 +1,9 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 const pool = require("../config/database");
+const authMiddleware = require("../middleware/authMiddleware");
 
 const router = express.Router();
-
-const JWT_SECRET = process.env.JWT_SECRET;
-
-if (!JWT_SECRET) {
-  throw new Error("JWT_SECRET is missing in environment variables");
-}
-
-/* ================= AUTH MIDDLEWARE ================= */
-
-const authMiddleware = (req, res, next) => {
-  try {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({ error: "No token provided" });
-    }
-
-    const token = authHeader.split(" ")[1];
-
-    const decoded = jwt.verify(token, JWT_SECRET);
-
-    req.user = decoded;
-
-    next();
-  } catch (err) {
-    return res.status(401).json({
-      error: "Invalid or expired token",
-    });
-  }
-};
 
 /* ================= GET PROFILE ================= */
 
@@ -58,6 +28,8 @@ router.get("/profile", authMiddleware, async (req, res) => {
 
     res.json({
       id: user.id,
+      firstName: user.first_name || "",
+      lastName: user.last_name || "",
       name: `${user.first_name || ""} ${user.last_name || ""}`.trim(),
       email: user.email,
       phone: user.phone || "",
@@ -78,13 +50,19 @@ router.get("/profile", authMiddleware, async (req, res) => {
 
 router.put("/profile", authMiddleware, async (req, res) => {
   try {
-    const { name, phone, city, country, avatar } = req.body;
+    const {
+      firstName,
+      lastName,
+      first_name,
+      last_name,
+      phone,
+      city,
+      country,
+      avatar,
+    } = req.body;
 
-    const fullName = name || "";
-    const parts = fullName.trim().split(" ");
-
-    const firstName = parts[0] || "";
-    const lastName = parts.slice(1).join(" ") || "";
+    const nextFirstName = firstName ?? first_name ?? req.user.first_name ?? "";
+    const nextLastName = lastName ?? last_name ?? req.user.last_name ?? "";
 
     const result = await pool.query(
       `
@@ -100,8 +78,8 @@ router.put("/profile", authMiddleware, async (req, res) => {
       RETURNING id, first_name, last_name, email, phone, city, country, avatar, role
       `,
       [
-        firstName,
-        lastName,
+        nextFirstName,
+        nextLastName,
         phone || "",
         city || "Mansoura",
         country || "Egypt",
@@ -114,6 +92,8 @@ router.put("/profile", authMiddleware, async (req, res) => {
 
     res.json({
       id: user.id,
+      firstName: user.first_name || "",
+      lastName: user.last_name || "",
       name: `${user.first_name || ""} ${user.last_name || ""}`.trim(),
       email: user.email,
       phone: user.phone || "",

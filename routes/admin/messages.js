@@ -147,7 +147,17 @@ router.put("/messages/:id/reply", async (req, res) => {
       `
       INSERT INTO messages (name, email, phone, sender, is_read, message)
       VALUES ($1, $2, $3, 'admin', false, $4)
-      RETURNING *
+      RETURNING
+        id,
+        name,
+        email,
+        phone,
+        sender,
+        is_read,
+        message,
+        reply,
+        replied_at,
+        created_at
       `,
       [
         clientName,

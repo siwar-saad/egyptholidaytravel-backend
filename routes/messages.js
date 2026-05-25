@@ -25,7 +25,17 @@ router.post("/", async (req, res) => {
       `
       INSERT INTO messages (name, email, phone, sender, is_read, message)
       VALUES ($1, $2, $3, 'client', false, $4)
-      RETURNING *
+      RETURNING
+        id,
+        name,
+        email,
+        phone,
+        sender,
+        is_read,
+        message,
+        reply,
+        replied_at,
+        created_at
       `,
       [name?.trim() || "Visitor", cleanEmail, phone || "", cleanMessage]
     );
