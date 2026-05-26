@@ -145,6 +145,7 @@ const initializeDatabase = async () => {
         name VARCHAR(150) NOT NULL,
         rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
         text TEXT NOT NULL,
+        status VARCHAR(20) DEFAULT 'private',
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -202,6 +203,8 @@ const initializeDatabase = async () => {
       ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT false;
       ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply TEXT DEFAULT '';
       ALTER TABLE messages ADD COLUMN IF NOT EXISTS replied_at TIMESTAMP WITH TIME ZONE;
+
+      ALTER TABLE reviews ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'private';
     `);
 
     /* INSERT DESTINATIONS */
