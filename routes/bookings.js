@@ -8,7 +8,17 @@ const authMiddleware = require("../middleware/authMiddleware");
 router.get("/", adminMiddleware, async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT *
+      SELECT
+        id,
+        booking_reference,
+        search_params,
+        selected_hotel,
+        selected_activities,
+        total_price,
+        customer_info,
+        booking_type,
+        status,
+        created_at
       FROM bookings
       ORDER BY created_at DESC
     `);
@@ -56,7 +66,17 @@ router.post("/", authMiddleware, async (req, res) => {
         booking_type
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING *
+      RETURNING
+        id,
+        booking_reference,
+        search_params,
+        selected_hotel,
+        selected_activities,
+        total_price,
+        customer_info,
+        booking_type,
+        status,
+        created_at
       `,
       [
         booking_reference || `BOOK-${Date.now()}`,

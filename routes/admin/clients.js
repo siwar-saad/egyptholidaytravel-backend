@@ -41,8 +41,19 @@ router.get("/clients", async (req, res) => {
 
 router.post("/clients", async (req, res) => {
   try {
-    const { first_name, last_name, phone, city, country, role } = req.body;
+    const {
+      firstName,
+      lastName,
+      first_name,
+      last_name,
+      phone,
+      city,
+      country,
+      role,
+    } = req.body;
     const email = req.body.email?.trim().toLowerCase();
+    const nextFirstName = firstName ?? first_name ?? "";
+    const nextLastName = lastName ?? last_name ?? "";
 
     if (!email) {
       return res.status(400).json({ error: "Email is required" });
@@ -89,8 +100,8 @@ router.post("/clients", async (req, res) => {
           created_at
         `,
         [
-          first_name || "",
-          last_name || "",
+          nextFirstName,
+          nextLastName,
           email,
           phone || "",
           city || "",
@@ -107,7 +118,7 @@ router.post("/clients", async (req, res) => {
         "Welcome to Egypt Holiday Travel",
         `
         <div style="font-family: Arial; padding:20px;">
-          <h2>Welcome ${first_name || "Client"}</h2>
+          <h2>Welcome ${nextFirstName || "Client"}</h2>
           <p>Your account has been created successfully.</p>
           <p><strong>Email:</strong> ${email}</p>
           <p><strong>Password:</strong> ${generatedPassword}</p>
@@ -140,9 +151,20 @@ router.post("/clients", async (req, res) => {
 router.put("/clients/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { first_name, last_name, phone, city, country, role, password } =
-      req.body;
+    const {
+      firstName,
+      lastName,
+      first_name,
+      last_name,
+      phone,
+      city,
+      country,
+      role,
+      password,
+    } = req.body;
     const email = req.body.email?.trim().toLowerCase();
+    const nextFirstName = firstName ?? first_name ?? "";
+    const nextLastName = lastName ?? last_name ?? "";
 
     const existing = await pool.query("SELECT id FROM users WHERE id = $1", [
       id,
@@ -155,7 +177,7 @@ router.put("/clients/:id", async (req, res) => {
     let query;
     let values;
 
-    if (password && password.trim()) {
+    if (typeof password === "string" && password.length > 0) {
       const hashedPassword = await bcrypt.hash(password, 10);
 
       query = `
@@ -174,8 +196,8 @@ router.put("/clients/:id", async (req, res) => {
       `;
 
       values = [
-        first_name || "",
-        last_name || "",
+        nextFirstName,
+        nextLastName,
         email,
         phone || "",
         city || "",
@@ -200,8 +222,8 @@ router.put("/clients/:id", async (req, res) => {
       `;
 
       values = [
-        first_name || "",
-        last_name || "",
+        nextFirstName,
+        nextLastName,
         email,
         phone || "",
         city || "",
@@ -294,19 +316,6 @@ router.delete("/clients/:id", async (req, res) => {
       await client.query(
         `
         DELETE FROM bookings
-        WHERE LOWER(customer_info->>'email') = LOWER($1)
-        `,
-        [userEmail]
-      );
-    }
-
-    if (
-      await tableExists("hotel_bookings") &&
-      await columnExists("hotel_bookings", "customer_info")
-    ) {
-      await client.query(
-        `
-        DELETE FROM hotel_bookings
         WHERE LOWER(customer_info->>'email') = LOWER($1)
         `,
         [userEmail]

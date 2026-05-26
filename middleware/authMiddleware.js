@@ -5,23 +5,35 @@ const pool = require("../config/database");
 const hashToken = (token) =>
   crypto.createHash("sha256").update(token).digest("hex");
 
+const getCookie = (req, name) => {
+  const cookies = req.headers.cookie || "";
+
+  return cookies
+    .split(";")
+    .map((cookie) => cookie.trim())
+    .find((cookie) => cookie.startsWith(`${name}=`))
+    ?.split("=")
+    .slice(1)
+    .join("=");
+};
+
 const authMiddleware = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
+    const cookieToken = getCookie(req, "auth_token");
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (!cookieToken) {
       return res.status(401).json({
         error: "Access denied. No token provided.",
       });
     }
 
-    const token = authHeader.split(" ")[1];
+    const token = decodeURIComponent(cookieToken);
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     const result = await pool.query(
       `
-      SELECT id, email, first_name, last_name, role, token_hash, token_expires
+      SELECT id, email, first_name, last_name, phone, city, country, role, token_hash, token_expires
       FROM users
       WHERE id = $1
       `,

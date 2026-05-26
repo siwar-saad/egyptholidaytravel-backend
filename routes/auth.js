@@ -50,6 +50,27 @@ const storeUserToken = async (userId, tokenData) => {
   );
 };
 
+const getAuthCookieOptions = (tokenData) => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",
+  expires: tokenData.tokenExpires,
+  path: "/",
+});
+
+const setAuthCookie = (res, tokenData) => {
+  res.cookie("auth_token", tokenData.token, getAuthCookieOptions(tokenData));
+};
+
+const clearAuthCookie = (res) => {
+  res.clearCookie("auth_token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+  });
+};
+
 const cleanUser = (user) => ({
   id: user.id,
   email: user.email,
@@ -114,6 +135,8 @@ router.post("/logout", authMiddleware, async (req, res) => {
     `,
     [req.user.id]
   );
+
+  clearAuthCookie(res);
 
   res.json({
     success: true,
@@ -185,10 +208,10 @@ router.post("/signup", async (req, res) => {
     const tokenData = createToken(user);
 
     await storeUserToken(user.id, tokenData);
+    setAuthCookie(res, tokenData);
 
     res.status(201).json({
       success: true,
-      token: tokenData.token,
       user: cleanUser(user),
     });
   } catch (error) {
@@ -253,10 +276,10 @@ router.post("/login", async (req, res) => {
     const tokenData = createToken(user, rememberMe ? "30d" : "1d");
 
     await storeUserToken(user.id, tokenData);
+    setAuthCookie(res, tokenData);
 
     res.json({
       success: true,
-      token: tokenData.token,
       user: cleanUser(user),
     });
   } catch (error) {
@@ -270,7 +293,7 @@ router.post("/login", async (req, res) => {
 /* FORGOT PASSWORD */
 router.post("/forgot-password", async (req, res) => {
   try {
-    const { email } = req.body;
+    const email = req.body.email?.trim().toLowerCase();
 
     if (!email) {
       return res.status(400).json({
@@ -284,9 +307,8 @@ router.post("/forgot-password", async (req, res) => {
     );
 
     if (result.rows.length === 0) {
-      return res.json({
-        success: true,
-        message: "If this email exists, a reset code was sent",
+      return res.status(404).json({
+        error: "No account found with this email",
       });
     }
 
@@ -317,7 +339,7 @@ router.post("/forgot-password", async (req, res) => {
 
     res.json({
       success: true,
-      message: "If this email exists, a reset code was sent",
+      message: "Reset code sent successfully",
     });
   } catch (error) {
     console.error("Forgot password error:", error);
@@ -327,10 +349,61 @@ router.post("/forgot-password", async (req, res) => {
   }
 });
 
+/* VERIFY RESET CODE */
+router.post("/verify-reset-code", async (req, res) => {
+  try {
+    const email = req.body.email?.trim().toLowerCase();
+    const code = req.body.code?.trim();
+
+    if (!email || !code) {
+      return res.status(400).json({
+        error: "Email and verification code are required",
+      });
+    }
+
+    const result = await pool.query(
+      `
+      SELECT id, reset_token
+      FROM users
+      WHERE email = $1
+      AND reset_token IS NOT NULL
+      AND reset_token_expires > NOW()
+      `,
+      [email]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({
+        error: "Invalid or expired reset code",
+      });
+    }
+
+    const validCode = await bcrypt.compare(code, result.rows[0].reset_token);
+
+    if (!validCode) {
+      return res.status(400).json({
+        error: "Invalid or expired reset code",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Verification code is valid",
+    });
+  } catch (error) {
+    console.error("Verify reset code error:", error);
+    res.status(500).json({
+      error: "Unable to verify reset code",
+    });
+  }
+});
+
 /* RESET PASSWORD */
 router.post("/reset-password", async (req, res) => {
   try {
-    const { email, code, newPassword } = req.body;
+    const email = req.body.email?.trim().toLowerCase();
+    const code = req.body.code?.trim();
+    const { newPassword } = req.body;
 
     if (!email || !code || !newPassword) {
       return res.status(400).json({
@@ -340,7 +413,16 @@ router.post("/reset-password", async (req, res) => {
 
     const result = await pool.query(
       `
-      SELECT *
+      SELECT
+        id,
+        first_name,
+        last_name,
+        email,
+        phone,
+        city,
+        country,
+        role,
+        reset_token
       FROM users
       WHERE email = $1
       AND reset_token IS NOT NULL
@@ -382,11 +464,11 @@ router.post("/reset-password", async (req, res) => {
     const tokenData = createToken(user);
 
     await storeUserToken(user.id, tokenData);
+    setAuthCookie(res, tokenData);
 
     res.json({
       success: true,
       message: "Password reset successfully",
-      token: tokenData.token,
       user: cleanUser(user),
     });
   } catch (error) {

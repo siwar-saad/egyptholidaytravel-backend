@@ -38,7 +38,21 @@ const slugifyFileName = (fileName) => {
 router.get("/", async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT *
+      SELECT
+        id,
+        name,
+        city,
+        meal,
+        image,
+        gallery,
+        description,
+        group_title,
+        group_subtitle,
+        periods,
+        display_order,
+        single_room,
+        double_room,
+        price
       FROM hotels
       ORDER BY COALESCE(display_order, 0), id DESC
     `);
@@ -162,7 +176,21 @@ router.post("/add", adminMiddleware, async (req, res) => {
         price
       )
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
-      RETURNING *
+      RETURNING
+        id,
+        name,
+        city,
+        meal,
+        image,
+        gallery,
+        description,
+        group_title,
+        group_subtitle,
+        periods,
+        display_order,
+        single_room,
+        double_room,
+        price
       `,
       [
         name,
@@ -235,7 +263,21 @@ router.put("/:id", adminMiddleware, async (req, res) => {
         double_room = $12,
         price = $13
       WHERE id = $14
-      RETURNING *
+      RETURNING
+        id,
+        name,
+        city,
+        meal,
+        image,
+        gallery,
+        description,
+        group_title,
+        group_subtitle,
+        periods,
+        display_order,
+        single_room,
+        double_room,
+        price
       `,
       [
         name,

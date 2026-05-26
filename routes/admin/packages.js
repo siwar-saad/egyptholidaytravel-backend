@@ -52,7 +52,24 @@ const mapPackage = (row) => ({
 router.get("/packages", async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT *
+      SELECT
+        id,
+        title,
+        name,
+        backend_name,
+        route,
+        duration,
+        transfer,
+        transfer_reduction,
+        start_price,
+        programme,
+        price,
+        visibility,
+        image,
+        options,
+        itinerary,
+        display_order,
+        created_at
       FROM packages
       ORDER BY display_order ASC, id DESC
     `);
@@ -148,7 +165,24 @@ router.post("/packages", async (req, res) => {
         display_order
       )
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb,$14::jsonb,$15)
-      RETURNING *
+      RETURNING
+        id,
+        title,
+        name,
+        backend_name,
+        route,
+        duration,
+        transfer,
+        transfer_reduction,
+        start_price,
+        programme,
+        price,
+        visibility,
+        image,
+        options,
+        itinerary,
+        display_order,
+        created_at
       `,
       [
         packageName,
@@ -226,7 +260,24 @@ router.put("/packages/:id", async (req, res) => {
           itinerary = $14::jsonb,
           display_order = $15
       WHERE id = $16
-      RETURNING *
+      RETURNING
+        id,
+        title,
+        name,
+        backend_name,
+        route,
+        duration,
+        transfer,
+        transfer_reduction,
+        start_price,
+        programme,
+        price,
+        visibility,
+        image,
+        options,
+        itinerary,
+        display_order,
+        created_at
       `,
       [
         packageName,
@@ -269,7 +320,24 @@ router.put("/packages/:id/visibility", async (req, res) => {
       UPDATE packages
       SET visibility = $1
       WHERE id = $2
-      RETURNING *
+      RETURNING
+        id,
+        title,
+        name,
+        backend_name,
+        route,
+        duration,
+        transfer,
+        transfer_reduction,
+        start_price,
+        programme,
+        price,
+        visibility,
+        image,
+        options,
+        itinerary,
+        display_order,
+        created_at
       `,
       [visibility || "Private", id]
     );

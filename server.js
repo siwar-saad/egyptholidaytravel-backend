@@ -15,6 +15,7 @@ const bookingRoutes = require("./routes/bookings");
 const messageRoutes = require("./routes/messages");
 const hotelReservationRoutes = require("./routes/hotels_reservetion");
 const hotelRoutes = require("./routes/hotels");
+const reviewRoutes = require("./routes/reviews");
 
 
 if (!process.env.JWT_SECRET) {
@@ -67,6 +68,7 @@ app.use("/api/client", clientRoutes);
 app.use("/api/packages", packageRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/messages", messageRoutes);
+app.use("/api/reviews", reviewRoutes);
 app.use("/api", subscriberRoutes);
 app.use("/api/hotels_reservation", hotelReservationRoutes);
 app.use("/api/hotels", hotelRoutes);

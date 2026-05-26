@@ -8,7 +8,17 @@ const allowedStatuses = ["Pending", "Confirmed", "Cancelled"];
 router.get("/reservations", async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT *
+      SELECT
+        id,
+        booking_reference,
+        booking_type,
+        search_params,
+        selected_hotel,
+        selected_activities,
+        total_price,
+        customer_info,
+        status,
+        created_at
       FROM bookings
       WHERE booking_type = 'package'
          OR booking_type IS NULL
@@ -56,7 +66,17 @@ router.post("/reservations", async (req, res) => {
         status
       )
       VALUES ($1, 'package', $2, $3, $4, 'Pending')
-      RETURNING *
+      RETURNING
+        id,
+        booking_reference,
+        booking_type,
+        search_params,
+        selected_hotel,
+        selected_activities,
+        total_price,
+        customer_info,
+        status,
+        created_at
       `,
       [
         `PKG-${Date.now()}`,
@@ -99,7 +119,17 @@ router.put("/reservations/:id/status", async (req, res) => {
       UPDATE bookings
       SET status = $1
       WHERE id = $2
-      RETURNING *
+      RETURNING
+        id,
+        booking_reference,
+        booking_type,
+        search_params,
+        selected_hotel,
+        selected_activities,
+        total_price,
+        customer_info,
+        status,
+        created_at
       `,
       [status, id]
     );
@@ -118,7 +148,15 @@ router.put("/reservations/:id/status", async (req, res) => {
 router.get("/hotels/reservations", async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT *
+      SELECT
+        id,
+        booking_reference,
+        booking_type,
+        selected_hotel,
+        customer_info,
+        total_price,
+        status,
+        created_at
       FROM bookings
       WHERE booking_type = 'hotel'
       ORDER BY created_at DESC
@@ -194,7 +232,15 @@ router.post("/hotels/reservations", async (req, res) => {
         status
       )
       VALUES ($1, 'hotel', $2, $3, $4, 'Pending')
-      RETURNING *
+      RETURNING
+        id,
+        booking_reference,
+        booking_type,
+        selected_hotel,
+        customer_info,
+        total_price,
+        status,
+        created_at
       `,
       [
         `HOTEL-${Date.now()}`,
@@ -239,7 +285,15 @@ router.put("/hotels/reservations/:id/status", async (req, res) => {
       SET status = $1
       WHERE id = $2
       AND booking_type = 'hotel'
-      RETURNING *
+      RETURNING
+        id,
+        booking_reference,
+        booking_type,
+        selected_hotel,
+        customer_info,
+        total_price,
+        status,
+        created_at
       `,
       [status, id]
     );

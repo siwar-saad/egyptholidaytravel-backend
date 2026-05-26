@@ -101,18 +101,6 @@ const initializeDatabase = async () => {
       );
     `);
 
-    /* HOTEL BOOKINGS */
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS hotel_bookings (
-        id SERIAL PRIMARY KEY,
-        hotel JSONB,
-        customer_info JSONB,
-        total_price DECIMAL(10,2),
-        status VARCHAR(50) DEFAULT 'Pending',
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
     /* MESSAGES */
     await pool.query(`
       CREATE TABLE IF NOT EXISTS messages (
@@ -146,6 +134,17 @@ const initializeDatabase = async () => {
       CREATE TABLE IF NOT EXISTS subscribers (
         id SERIAL PRIMARY KEY,
         email VARCHAR(255) UNIQUE NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    /* REVIEWS */
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS reviews (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(150) NOT NULL,
+        rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+        text TEXT NOT NULL,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `);

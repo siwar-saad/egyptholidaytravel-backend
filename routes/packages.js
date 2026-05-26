@@ -28,7 +28,23 @@ const mapPackage = (row) => ({
 router.get("/", async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT *
+      SELECT
+        id,
+        title,
+        name,
+        backend_name,
+        route,
+        duration,
+        transfer,
+        transfer_reduction,
+        start_price,
+        programme,
+        price,
+        visibility,
+        image,
+        options,
+        itinerary,
+        display_order
       FROM packages
       WHERE visibility = 'Published'
       ORDER BY display_order ASC, id DESC

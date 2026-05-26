@@ -6,20 +6,29 @@ const adminMiddleware = require("../middleware/adminMiddleware");
 /* PUBLIC: subscribe */
 router.post("/subscribers", async (req, res) => {
   try {
-    const { email } = req.body;
+    const email = req.body.email?.trim().toLowerCase();
+    const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email || "");
 
-    if (!email) {
-      return res.status(400).json({ error: "Email is required" });
+    if (!isValidEmail) {
+      return res.status(400).json({ error: "Valid email is required" });
     }
 
     const result = await pool.query(
       `
       INSERT INTO subscribers (email)
       VALUES ($1)
-      RETURNING *
+      ON CONFLICT (email) DO NOTHING
+      RETURNING id, email, created_at
       `,
       [email]
     );
+
+    if (result.rows.length === 0) {
+      return res.status(409).json({
+        success: false,
+        error: "Email is already subscribed",
+      });
+    }
 
     res.status(201).json({
       success: true,
@@ -35,7 +44,7 @@ router.post("/subscribers", async (req, res) => {
 router.get("/subscribers", adminMiddleware, async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT *
+      SELECT id, email, created_at
       FROM subscribers
       ORDER BY created_at DESC
     `);
