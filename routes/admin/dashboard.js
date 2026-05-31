@@ -3,6 +3,7 @@ const pool = require("../../config/database");
 
 const router = express.Router();
 
+/* ================= DASHBOARD STATS ================= */
 router.get("/dashboard", async (req, res) => {
   try {
     const packagesCount = await pool.query("SELECT COUNT(*) FROM packages");

@@ -5,6 +5,7 @@ const adminMiddleware = require("../middleware/adminMiddleware");
 const router = express.Router();
 const allowedStatuses = ["public", "private"];
 
+/* ================= REVIEW HELPERS ================= */
 const mapReview = (review) => ({
   id: review.id,
   _id: review.id,
@@ -16,6 +17,7 @@ const mapReview = (review) => ({
   createdAt: review.created_at,
 });
 
+/* ================= ADMIN REVIEWS ================= */
 router.get("/admin/all", adminMiddleware, async (req, res) => {
   try {
     const result = await pool.query(`
@@ -31,6 +33,7 @@ router.get("/admin/all", adminMiddleware, async (req, res) => {
   }
 });
 
+/* ================= UPDATE REVIEW STATUS ================= */
 router.put("/admin/:id/status", adminMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
@@ -61,6 +64,7 @@ router.put("/admin/:id/status", adminMiddleware, async (req, res) => {
   }
 });
 
+/* ================= DELETE REVIEW ================= */
 router.delete("/admin/:id", adminMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
@@ -88,6 +92,7 @@ router.delete("/admin/:id", adminMiddleware, async (req, res) => {
   }
 });
 
+/* ================= PUBLIC REVIEWS ================= */
 router.get("/", async (req, res) => {
   try {
     const result = await pool.query(`
@@ -105,6 +110,7 @@ router.get("/", async (req, res) => {
   }
 });
 
+/* ================= CREATE REVIEW ================= */
 router.post("/", async (req, res) => {
   try {
     const name = req.body.name?.trim();

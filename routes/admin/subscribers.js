@@ -3,6 +3,7 @@ const pool = require("../../config/database");
 
 const router = express.Router();
 
+/* ================= ADMIN SUBSCRIBERS ================= */
 router.get("/subscribers", async (req, res) => {
   try {
     const result = await pool.query(`

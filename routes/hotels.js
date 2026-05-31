@@ -6,7 +6,8 @@ const pool = require("../config/database");
 
 const adminMiddleware = require("../middleware/adminMiddleware");
 
-const normalizeJsonArray = (value) => {
+/* ================= HOTEL HELPERS ================= */
+const parseJsonArray = (value) => {
   if (Array.isArray(value)) return value;
   if (!value) return [];
 
@@ -31,10 +32,7 @@ const slugifyFileName = (fileName) => {
   return `${baseName || "hotel"}-${Date.now()}${ext}`;
 };
 
-/* =======================================================
-   PUBLIC - GET HOTELS
-======================================================= */
-
+/* ================= PUBLIC HOTELS ================= */
 router.get("/", async (req, res) => {
   try {
     const result = await pool.query(`
@@ -68,10 +66,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-/* =======================================================
-   ADMIN ONLY - UPLOAD HOTEL IMAGE
-======================================================= */
-
+/* ================= UPLOAD HOTEL IMAGE ================= */
 router.post("/upload-image", adminMiddleware, async (req, res) => {
   try {
     const { fileName, dataUrl } = req.body;
@@ -124,10 +119,7 @@ router.post("/upload-image", adminMiddleware, async (req, res) => {
     res.status(500).json({ error: "Unable to upload hotel image" });
   }
 });
-/* =======================================================
-   ADMIN ONLY - CREATE HOTEL
-======================================================= */
-
+/* ================= CREATE HOTEL ================= */
 router.post("/add", adminMiddleware, async (req, res) => {
   try {
     const {
@@ -197,11 +189,11 @@ router.post("/add", adminMiddleware, async (req, res) => {
         city || "",
         meal || "",
         image || "",
-        JSON.stringify(normalizeJsonArray(gallery)),
+        JSON.stringify(parseJsonArray(gallery)),
         description || "",
         groupTitle || group_title || "",
         groupSubtitle || group_subtitle || "",
-        JSON.stringify(normalizeJsonArray(periods)),
+        JSON.stringify(parseJsonArray(periods)),
         Number(displayOrder ?? display_order ?? 0),
         singleRoom || single_room || null,
         doubleRoom || double_room || null,
@@ -216,10 +208,7 @@ router.post("/add", adminMiddleware, async (req, res) => {
   }
 });
 
-/* =======================================================
-   ADMIN ONLY - UPDATE HOTEL
-======================================================= */
-
+/* ================= UPDATE HOTEL ================= */
 router.put("/:id", adminMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
@@ -284,11 +273,11 @@ router.put("/:id", adminMiddleware, async (req, res) => {
         city || "",
         meal || "",
         image || "",
-        JSON.stringify(normalizeJsonArray(gallery)),
+        JSON.stringify(parseJsonArray(gallery)),
         description || "",
         groupTitle || group_title || "",
         groupSubtitle || group_subtitle || "",
-        JSON.stringify(normalizeJsonArray(periods)),
+        JSON.stringify(parseJsonArray(periods)),
         Number(displayOrder ?? display_order ?? 0),
         singleRoom || single_room || null,
         doubleRoom || double_room || null,
@@ -308,10 +297,7 @@ router.put("/:id", adminMiddleware, async (req, res) => {
   }
 });
 
-/* =======================================================
-   ADMIN ONLY - DELETE HOTEL
-======================================================= */
-
+/* ================= DELETE HOTEL ================= */
 router.delete("/:id", adminMiddleware, async (req, res) => {
   try {
     const { id } = req.params;

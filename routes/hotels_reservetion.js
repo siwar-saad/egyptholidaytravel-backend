@@ -5,10 +5,22 @@ const pool = require("../config/database");
 const adminMiddleware = require("../middleware/adminMiddleware");
 const authMiddleware = require("../middleware/authMiddleware");
 
-/* =======================================================
-   PUBLIC - CREATE HOTEL BOOKING
-======================================================= */
+/* ================= HOTEL BOOKING HELPERS ================= */
+const allowedBookingStatuses = ["Pending", "Confirmed", "Cancelled"];
 
+// Always trust the authenticated user's email over client-submitted booking data.
+const buildCustomerInfo = (customerInfo = {}, user = {}) => ({
+  ...customerInfo,
+  name:
+    customerInfo.name ||
+    customerInfo.fullName ||
+    customerInfo.full_name ||
+    `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
+    "",
+  email: user.email,
+});
+
+/* ================= CREATE HOTEL BOOKING ================= */
 router.post("/reserve", authMiddleware, async (req, res) => {
   try {
     const {
@@ -24,16 +36,7 @@ router.post("/reserve", authMiddleware, async (req, res) => {
     const customerData = customer_info || customerInfo || {};
 
     const bookingReference = `HOTEL-${Date.now()}`;
-    const normalizedCustomerInfo = {
-      ...customerData,
-      name:
-        customerData.name ||
-        customerData.fullName ||
-        customerData.full_name ||
-        `${req.user.first_name || ""} ${req.user.last_name || ""}`.trim() ||
-        "",
-      email: req.user.email,
-    };
+    const normalizedCustomerInfo = buildCustomerInfo(customerData, req.user);
 
     const result = await pool.query(
       `
@@ -83,10 +86,7 @@ router.post("/reserve", authMiddleware, async (req, res) => {
   }
 });
 
-/* =======================================================
-   ADMIN ONLY - GET HOTEL BOOKINGS
-======================================================= */
-
+/* ================= ADMIN HOTEL BOOKINGS ================= */
 router.get("/reservations", adminMiddleware, async (req, res) => {
   try {
     const result = await pool.query(`
@@ -138,10 +138,7 @@ router.get("/reservations", adminMiddleware, async (req, res) => {
   }
 });
 
-/* =======================================================
-   ADMIN ONLY - UPDATE STATUS
-======================================================= */
-
+/* ================= UPDATE HOTEL BOOKING STATUS ================= */
 router.put(
   "/reservations/:id/status",
   adminMiddleware,
@@ -150,13 +147,7 @@ router.put(
       const { id } = req.params;
       const { status } = req.body;
 
-      const allowedStatuses = [
-        "Pending",
-        "Confirmed",
-        "Cancelled",
-      ];
-
-      if (!allowedStatuses.includes(status)) {
+      if (!allowedBookingStatuses.includes(status)) {
         return res.status(400).json({
           error: "Invalid status",
         });

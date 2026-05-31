@@ -1,6 +1,7 @@
 require("dotenv").config();
 const nodemailer = require("nodemailer");
 
+/* ================= EMAIL TRANSPORT ================= */
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST,
   port: Number(process.env.EMAIL_PORT),
@@ -11,6 +12,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+/* ================= SEND EMAIL ================= */
 const sendEmail = async (to, subject, html) => {
   const info = await transporter.sendMail({
     from: process.env.EMAIL_FROM,

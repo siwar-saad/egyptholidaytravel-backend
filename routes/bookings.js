@@ -4,7 +4,20 @@ const pool = require("../config/database");
 const adminMiddleware = require("../middleware/adminMiddleware");
 const authMiddleware = require("../middleware/authMiddleware");
 
-/* ADMIN ONLY: get all bookings */
+/* ================= BOOKING HELPERS ================= */
+// Always trust the authenticated user's email over client-submitted booking data.
+const buildCustomerInfo = (customerInfo = {}, user = {}) => ({
+  ...customerInfo,
+  name:
+    customerInfo.name ||
+    customerInfo.fullName ||
+    customerInfo.full_name ||
+    `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
+    "",
+  email: user.email,
+});
+
+/* ================= ADMIN BOOKINGS ================= */
 router.get("/", adminMiddleware, async (req, res) => {
   try {
     const result = await pool.query(`
@@ -30,7 +43,7 @@ router.get("/", adminMiddleware, async (req, res) => {
   }
 });
 
-/* AUTHENTICATED CLIENT: create booking */
+/* ================= CREATE BOOKING ================= */
 router.post("/", authMiddleware, async (req, res) => {
   try {
     const {
@@ -42,16 +55,7 @@ router.post("/", authMiddleware, async (req, res) => {
       customer_info,
       booking_type,
     } = req.body;
-    const normalizedCustomerInfo = {
-      ...(customer_info || {}),
-      name:
-        customer_info?.name ||
-        customer_info?.fullName ||
-        customer_info?.full_name ||
-        `${req.user.first_name || ""} ${req.user.last_name || ""}`.trim() ||
-        "",
-      email: req.user.email,
-    };
+    const normalizedCustomerInfo = buildCustomerInfo(customer_info, req.user);
 
     const result = await pool.query(
       `

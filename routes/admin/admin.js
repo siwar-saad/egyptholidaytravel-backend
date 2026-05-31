@@ -12,8 +12,10 @@ const settingRoutes = require("./settings");
 
 const router = express.Router();
 
+/* ================= ADMIN PROTECTION ================= */
 router.use(adminMiddleware);
 
+/* ================= ADMIN MODULES ================= */
 router.use(dashboardRoutes);
 router.use(packageRoutes);
 router.use(reservationRoutes);

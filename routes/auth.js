@@ -8,12 +8,14 @@ const authMiddleware = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
+/* ================= AUTH HELPERS ================= */
 const JWT_SECRET = process.env.JWT_SECRET;
 
 if (!JWT_SECRET) {
   throw new Error("JWT_SECRET is missing in environment variables");
 }
 
+// Store only a hash of issued JWTs so logout can invalidate a token server-side.
 const hashToken = (token) =>
   crypto.createHash("sha256").update(token).digest("hex");
 
@@ -87,6 +89,8 @@ const loginAttempts = new Map();
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_LOCK_TIME = 15 * 60 * 1000;
 
+/* ================= LOGIN RATE LIMIT ================= */
+// Lightweight in-memory lockout to slow repeated password guessing attempts.
 const getLoginKey = (req, email) => `${req.ip}:${email}`;
 
 const isLoginLocked = (key) => {
@@ -115,7 +119,7 @@ const recordFailedLogin = (key) => {
   });
 };
 
-/* CURRENT USER */
+/* ================= CURRENT USER ================= */
 router.get("/me", authMiddleware, async (req, res) => {
   res.json({
     success: true,
@@ -123,7 +127,7 @@ router.get("/me", authMiddleware, async (req, res) => {
   });
 });
 
-/* LOGOUT */
+/* ================= LOGOUT ================= */
 router.post("/logout", authMiddleware, async (req, res) => {
   await pool.query(
     `
@@ -144,7 +148,7 @@ router.post("/logout", authMiddleware, async (req, res) => {
   });
 });
 
-/* SIGNUP */
+/* ================= SIGNUP ================= */
 router.post("/signup", async (req, res) => {
   try {
     const {
@@ -212,6 +216,8 @@ router.post("/signup", async (req, res) => {
 
     res.status(201).json({
       success: true,
+      token: tokenData.token,
+      tokenExpires: tokenData.tokenExpires,
       user: cleanUser(user),
     });
   } catch (error) {
@@ -222,7 +228,7 @@ router.post("/signup", async (req, res) => {
   }
 });
 
-/* LOGIN */
+/* ================= LOGIN ================= */
 router.post("/login", async (req, res) => {
   try {
     const email = req.body.email?.trim().toLowerCase();
@@ -280,6 +286,8 @@ router.post("/login", async (req, res) => {
 
     res.json({
       success: true,
+      token: tokenData.token,
+      tokenExpires: tokenData.tokenExpires,
       user: cleanUser(user),
     });
   } catch (error) {
@@ -290,7 +298,7 @@ router.post("/login", async (req, res) => {
   }
 });
 
-/* FORGOT PASSWORD */
+/* ================= FORGOT PASSWORD ================= */
 router.post("/forgot-password", async (req, res) => {
   try {
     const email = req.body.email?.trim().toLowerCase();
@@ -349,7 +357,7 @@ router.post("/forgot-password", async (req, res) => {
   }
 });
 
-/* VERIFY RESET CODE */
+/* ================= VERIFY RESET CODE ================= */
 router.post("/verify-reset-code", async (req, res) => {
   try {
     const email = req.body.email?.trim().toLowerCase();
@@ -398,7 +406,7 @@ router.post("/verify-reset-code", async (req, res) => {
   }
 });
 
-/* RESET PASSWORD */
+/* ================= RESET PASSWORD ================= */
 router.post("/reset-password", async (req, res) => {
   try {
     const email = req.body.email?.trim().toLowerCase();
@@ -469,6 +477,8 @@ router.post("/reset-password", async (req, res) => {
     res.json({
       success: true,
       message: "Password reset successfully",
+      token: tokenData.token,
+      tokenExpires: tokenData.tokenExpires,
       user: cleanUser(user),
     });
   } catch (error) {

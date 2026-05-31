@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const pool = require("../config/database");
 
+/* ================= TOKEN HELPERS ================= */
 const hashToken = (token) =>
   crypto.createHash("sha256").update(token).digest("hex");
 
@@ -17,6 +18,7 @@ const getCookie = (req, name) => {
     .join("=");
 };
 
+/* ================= AUTH MIDDLEWARE ================= */
 const authMiddleware = async (req, res, next) => {
   try {
     const cookieToken = getCookie(req, "auth_token");
@@ -48,6 +50,7 @@ const authMiddleware = async (req, res, next) => {
 
     const user = result.rows[0];
 
+    // Compare the cookie JWT against the hash stored in DB so logout revokes it.
     if (
       !user.token_hash ||
       user.token_hash !== hashToken(token) ||

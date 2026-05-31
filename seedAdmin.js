@@ -1,6 +1,7 @@
 const bcrypt = require("bcryptjs");
 const pool = require("./config/database");
 
+/* ================= SEED ADMIN ================= */
 const seedAdmin = async () => {
   try {
     const email = "admin@gmail.com";

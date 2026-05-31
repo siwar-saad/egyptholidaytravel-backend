@@ -3,7 +3,7 @@ const router = express.Router();
 const pool = require("../config/database");
 const adminMiddleware = require("../middleware/adminMiddleware");
 
-/* PUBLIC: subscribe */
+/* ================= PUBLIC SUBSCRIBE ================= */
 router.post("/subscribers", async (req, res) => {
   try {
     const email = req.body.email?.trim().toLowerCase();
@@ -40,7 +40,7 @@ router.post("/subscribers", async (req, res) => {
   }
 });
 
-/* ADMIN ONLY: get all subscribers */
+/* ================= ADMIN SUBSCRIBERS ================= */
 router.get("/subscribers", adminMiddleware, async (req, res) => {
   try {
     const result = await pool.query(`

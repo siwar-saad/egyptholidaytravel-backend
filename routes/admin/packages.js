@@ -7,6 +7,7 @@ const router = express.Router();
 
 const packageImageDir = path.join(__dirname, "../../public/images/packages");
 
+/* ================= PACKAGE HELPERS ================= */
 const ensurePackageImageDir = () => {
   if (!fs.existsSync(packageImageDir)) {
     fs.mkdirSync(packageImageDir, { recursive: true });
@@ -18,7 +19,7 @@ const parseJsonArray = (value) => {
   if (!value) return [];
 
   try {
-    const parsed = JSON.parse(value);
+    const parsed = typeof value === "string" ? JSON.parse(value) : value;
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
@@ -49,6 +50,7 @@ const mapPackage = (row) => ({
   created_at: row.created_at,
 });
 
+/* ================= ADMIN PACKAGES ================= */
 router.get("/packages", async (req, res) => {
   try {
     const result = await pool.query(`
@@ -81,6 +83,7 @@ router.get("/packages", async (req, res) => {
   }
 });
 
+/* ================= UPLOAD PACKAGE IMAGE ================= */
 router.post("/packages/upload-image", async (req, res) => {
   try {
     const { image } = req.body;
@@ -114,6 +117,7 @@ router.post("/packages/upload-image", async (req, res) => {
   }
 });
 
+/* ================= CREATE PACKAGE ================= */
 router.post("/packages", async (req, res) => {
   try {
     const {
@@ -210,6 +214,7 @@ router.post("/packages", async (req, res) => {
   }
 });
 
+/* ================= UPDATE PACKAGE ================= */
 router.put("/packages/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -310,6 +315,7 @@ router.put("/packages/:id", async (req, res) => {
   }
 });
 
+/* ================= UPDATE PACKAGE VISIBILITY ================= */
 router.put("/packages/:id/visibility", async (req, res) => {
   try {
     const { id } = req.params;
@@ -353,6 +359,7 @@ router.put("/packages/:id/visibility", async (req, res) => {
   }
 });
 
+/* ================= DELETE PACKAGE ================= */
 router.delete("/packages/:id", async (req, res) => {
   try {
     const { id } = req.params;

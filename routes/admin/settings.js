@@ -4,6 +4,7 @@ const pool = require("../../config/database");
 
 const router = express.Router();
 
+/* ================= ADMIN SETTINGS ================= */
 router.get("/settings", async (req, res) => {
   try {
     const result = await pool.query("SELECT key, value FROM settings");
@@ -29,6 +30,7 @@ router.get("/settings", async (req, res) => {
   }
 });
 
+/* ================= UPDATE AGENCY SETTINGS ================= */
 router.put("/settings/agency", async (req, res) => {
   try {
     const agency = req.body;
@@ -49,6 +51,7 @@ router.put("/settings/agency", async (req, res) => {
   }
 });
 
+/* ================= UPDATE CONTACT SETTINGS ================= */
 router.put("/settings/contacts", async (req, res) => {
   try {
     const { contacts } = req.body;
@@ -69,6 +72,7 @@ router.put("/settings/contacts", async (req, res) => {
   }
 });
 
+/* ================= UPDATE ADMIN PASSWORD ================= */
 router.put("/settings/password", async (req, res) => {
   try {
     const { oldPassword, newPassword } = req.body;

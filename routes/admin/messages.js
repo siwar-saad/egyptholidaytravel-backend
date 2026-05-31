@@ -4,6 +4,7 @@ const { sendEmail } = require("../../services/emailService");
 
 const router = express.Router();
 
+/* ================= ADMIN MESSAGES ================= */
 router.get("/messages", async (req, res) => {
   try {
     const result = await pool.query(`
@@ -62,6 +63,7 @@ router.get("/messages", async (req, res) => {
   }
 });
 
+/* ================= UNREAD MESSAGES COUNT ================= */
 router.get("/messages/unread-count", async (req, res) => {
   try {
     const result = await pool.query(`
@@ -78,6 +80,7 @@ router.get("/messages/unread-count", async (req, res) => {
   }
 });
 
+/* ================= MARK MESSAGES AS READ ================= */
 router.put("/messages/read", async (req, res) => {
   try {
     const email = req.body.email?.trim().toLowerCase();
@@ -108,6 +111,7 @@ router.put("/messages/read", async (req, res) => {
   }
 });
 
+/* ================= REPLY TO MESSAGE ================= */
 router.put("/messages/:id/reply", async (req, res) => {
   try {
     const { id } = req.params;

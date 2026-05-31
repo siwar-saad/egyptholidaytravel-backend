@@ -6,6 +6,7 @@ const { sendEmail } = require("../../services/emailService");
 
 const router = express.Router();
 
+/* ================= CLIENT HELPERS ================= */
 const generatePassword = () => {
   const alphabet =
     "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
@@ -15,6 +16,7 @@ const generatePassword = () => {
   }).join("");
 };
 
+/* ================= ADMIN CLIENTS ================= */
 router.get("/clients", async (req, res) => {
   try {
     const result = await pool.query(`
@@ -39,6 +41,7 @@ router.get("/clients", async (req, res) => {
   }
 });
 
+/* ================= CREATE CLIENT ================= */
 router.post("/clients", async (req, res) => {
   try {
     const {
@@ -148,6 +151,7 @@ router.post("/clients", async (req, res) => {
   }
 });
 
+/* ================= UPDATE CLIENT ================= */
 router.put("/clients/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -242,6 +246,7 @@ router.put("/clients/:id", async (req, res) => {
   }
 });
 
+/* ================= DELETE CLIENT ================= */
 router.delete("/clients/:id", async (req, res) => {
   const client = await pool.connect();
   let transactionStarted = false;

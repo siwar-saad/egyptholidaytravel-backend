@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../config/database");
 
+/* ================= CONTACT MESSAGES ================= */
 router.post("/", async (req, res) => {
   try {
     const { name, email, phone, message } = req.body;

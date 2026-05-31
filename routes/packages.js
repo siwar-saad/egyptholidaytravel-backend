@@ -3,6 +3,7 @@ const pool = require("../config/database");
 
 const router = express.Router();
 
+/* ================= PACKAGE HELPERS ================= */
 const mapPackage = (row) => ({
   id: row.id,
   title: row.title || row.name || "",
@@ -25,6 +26,7 @@ const mapPackage = (row) => ({
   displayOrder: row.display_order || 0,
 });
 
+/* ================= PUBLIC PACKAGES ================= */
 router.get("/", async (req, res) => {
   try {
     const result = await pool.query(`

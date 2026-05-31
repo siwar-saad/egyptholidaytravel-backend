@@ -4,7 +4,7 @@ const packages = [];
 
 const initializeDatabase = async () => {
   try {
-    /* USERS */
+    /* ================= USERS ================= */
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -28,7 +28,7 @@ const initializeDatabase = async () => {
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
     `);
 
-    /* DESTINATIONS */
+    /* ================= DESTINATIONS ================= */
     await pool.query(`
       CREATE TABLE IF NOT EXISTS destinations (
         id VARCHAR(50) PRIMARY KEY,
@@ -40,7 +40,7 @@ const initializeDatabase = async () => {
       );
     `);
 
-    /* PACKAGES */
+    /* ================= PACKAGES ================= */
     await pool.query(`
       CREATE TABLE IF NOT EXISTS packages (
         id SERIAL PRIMARY KEY,
@@ -64,7 +64,7 @@ const initializeDatabase = async () => {
       );
     `);
 
-    /* HOTELS */
+    /* ================= HOTELS ================= */
     await pool.query(`
       CREATE TABLE IF NOT EXISTS hotels (
         id SERIAL PRIMARY KEY,
@@ -85,7 +85,7 @@ const initializeDatabase = async () => {
       );
     `);
 
-    /* BOOKINGS */
+    /* ================= BOOKINGS ================= */
     await pool.query(`
       CREATE TABLE IF NOT EXISTS bookings (
         id SERIAL PRIMARY KEY,
@@ -101,7 +101,7 @@ const initializeDatabase = async () => {
       );
     `);
 
-    /* MESSAGES */
+    /* ================= MESSAGES ================= */
     await pool.query(`
       CREATE TABLE IF NOT EXISTS messages (
         id SERIAL PRIMARY KEY,
@@ -117,7 +117,7 @@ const initializeDatabase = async () => {
       );
     `);
 
-    /* PAYMENTS */
+    /* ================= PAYMENTS ================= */
     await pool.query(`
       CREATE TABLE IF NOT EXISTS payments (
         id SERIAL PRIMARY KEY,
@@ -129,7 +129,7 @@ const initializeDatabase = async () => {
       );
     `);
 
-    /* SUBSCRIBERS */
+    /* ================= SUBSCRIBERS ================= */
     await pool.query(`
       CREATE TABLE IF NOT EXISTS subscribers (
         id SERIAL PRIMARY KEY,
@@ -138,7 +138,7 @@ const initializeDatabase = async () => {
       );
     `);
 
-    /* REVIEWS */
+    /* ================= REVIEWS ================= */
     await pool.query(`
       CREATE TABLE IF NOT EXISTS reviews (
         id SERIAL PRIMARY KEY,
@@ -150,7 +150,7 @@ const initializeDatabase = async () => {
       );
     `);
 
-    /* SETTINGS */
+    /* ================= SETTINGS ================= */
     await pool.query(`
       CREATE TABLE IF NOT EXISTS settings (
         id SERIAL PRIMARY KEY,
@@ -160,7 +160,7 @@ const initializeDatabase = async () => {
       );
     `);
 
-    /* ALTER TABLES */
+    /* ================= ALTER TABLES ================= */
     await pool.query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS city VARCHAR(100);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT 'Egypt';
@@ -207,7 +207,7 @@ const initializeDatabase = async () => {
       ALTER TABLE reviews ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'private';
     `);
 
-    /* INSERT DESTINATIONS */
+    /* ================= INSERT DESTINATIONS ================= */
     for (const dest of Object.values(destinations)) {
       await pool.query(
         `
@@ -227,7 +227,7 @@ const initializeDatabase = async () => {
       );
     }
 
-    /* INSERT PACKAGES */
+    /* ================= INSERT PACKAGES ================= */
     for (const pkg of packages) {
       await pool.query(
         `

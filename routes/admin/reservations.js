@@ -3,8 +3,9 @@ const pool = require("../../config/database");
 
 const router = express.Router();
 
-const allowedStatuses = ["Pending", "Confirmed", "Cancelled"];
+const allowedBookingStatuses = ["Pending", "Confirmed", "Cancelled"];
 
+/* ================= PACKAGE RESERVATIONS ================= */
 router.get("/reservations", async (req, res) => {
   try {
     const result = await pool.query(`
@@ -32,6 +33,7 @@ router.get("/reservations", async (req, res) => {
   }
 });
 
+/* ================= CREATE PACKAGE RESERVATION ================= */
 router.post("/reservations", async (req, res) => {
   try {
     const {
@@ -105,12 +107,13 @@ router.post("/reservations", async (req, res) => {
   }
 });
 
+/* ================= UPDATE PACKAGE RESERVATION STATUS ================= */
 router.put("/reservations/:id/status", async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
 
-    if (!allowedStatuses.includes(status)) {
+    if (!allowedBookingStatuses.includes(status)) {
       return res.status(400).json({ error: "Invalid status" });
     }
 
@@ -145,6 +148,7 @@ router.put("/reservations/:id/status", async (req, res) => {
   }
 });
 
+/* ================= HOTEL RESERVATIONS ================= */
 router.get("/hotels/reservations", async (req, res) => {
   try {
     const result = await pool.query(`
@@ -197,6 +201,7 @@ router.get("/hotels/reservations", async (req, res) => {
   }
 });
 
+/* ================= CREATE HOTEL RESERVATION ================= */
 router.post("/hotels/reservations", async (req, res) => {
   try {
     const {
@@ -270,12 +275,13 @@ router.post("/hotels/reservations", async (req, res) => {
   }
 });
 
+/* ================= UPDATE HOTEL RESERVATION STATUS ================= */
 router.put("/hotels/reservations/:id/status", async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
 
-    if (!allowedStatuses.includes(status)) {
+    if (!allowedBookingStatuses.includes(status)) {
       return res.status(400).json({ error: "Invalid status" });
     }
 
