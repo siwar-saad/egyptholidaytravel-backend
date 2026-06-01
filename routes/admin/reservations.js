@@ -3,6 +3,13 @@ const pool = require("../../config/database");
 
 const router = express.Router();
 
+const getCustomerName = (customerInfo = {}) =>
+  customerInfo?.fullName ||
+  customerInfo?.name ||
+  customerInfo?.full_name ||
+  customerInfo?.email ||
+  "Client";
+
 const allowedBookingStatuses = ["Pending", "Confirmed", "Cancelled"];
 
 /* ================= PACKAGE RESERVATIONS ================= */
@@ -169,12 +176,7 @@ router.get("/hotels/reservations", async (req, res) => {
     const reservations = result.rows.map((booking) => ({
       id: booking.id,
       type: "hotel",
-      client:
-        booking.customer_info?.fullName ||
-        booking.customer_info?.full_name ||
-        booking.customer_info?.name ||
-        booking.customer_info?.email ||
-        "Client",
+      client: getCustomerName(booking.customer_info),
       email: booking.customer_info?.email || "",
       phone: booking.customer_info?.phone || "",
       travelers: booking.customer_info?.travelers || "",

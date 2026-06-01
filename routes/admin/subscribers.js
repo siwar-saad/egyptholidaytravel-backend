@@ -1,10 +1,11 @@
 const express = require("express");
 const pool = require("../../config/database");
+const adminMiddleware = require("../../middleware/adminMiddleware");
 
 const router = express.Router();
 
 /* ================= ADMIN SUBSCRIBERS ================= */
-router.get("/subscribers", async (req, res) => {
+router.get("/subscribers", adminMiddleware, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT id, email, created_at

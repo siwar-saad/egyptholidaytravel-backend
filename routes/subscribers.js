@@ -1,7 +1,6 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../config/database");
-const adminMiddleware = require("../middleware/adminMiddleware");
 
 /* ================= PUBLIC SUBSCRIBE ================= */
 router.post("/subscribers", async (req, res) => {
@@ -37,22 +36,6 @@ router.post("/subscribers", async (req, res) => {
   } catch (error) {
     console.error("Subscribe error:", error.message);
     res.status(500).json({ error: "Subscribe error" });
-  }
-});
-
-/* ================= ADMIN SUBSCRIBERS ================= */
-router.get("/subscribers", adminMiddleware, async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT id, email, created_at
-      FROM subscribers
-      ORDER BY created_at DESC
-    `);
-
-    res.json(result.rows);
-  } catch (error) {
-    console.error("Get subscribers error:", error.message);
-    res.status(500).json({ error: "Get subscribers error" });
   }
 });
 

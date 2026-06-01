@@ -3,6 +3,13 @@ const pool = require("../../config/database");
 
 const router = express.Router();
 
+const getCustomerName = (customerInfo = {}) =>
+  customerInfo?.fullName ||
+  customerInfo?.name ||
+  customerInfo?.full_name ||
+  customerInfo?.email ||
+  "Client";
+
 /* ================= ADMIN PAYMENTS ================= */
 router.get("/payments", async (req, res) => {
   try {
@@ -43,11 +50,7 @@ router.get("/payments", async (req, res) => {
     const bookingPayments = bookingsResult.rows.map((booking) => ({
       id: `booking-${booking.id}`,
       invoice: booking.booking_reference || `Booking #${booking.id}`,
-      client:
-        booking.customer_info?.fullName ||
-        booking.customer_info?.name ||
-        booking.customer_info?.email ||
-        "Client",
+      client: getCustomerName(booking.customer_info),
       amount: booking.total_price || 0,
       status: booking.status === "Confirmed" ? "Paid" : "Not Paid",
       type: booking.booking_type || "package",
