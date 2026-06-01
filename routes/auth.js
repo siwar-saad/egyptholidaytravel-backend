@@ -126,7 +126,7 @@ router.get("/me", authMiddleware, async (req, res) => {
     user: cleanUser(req.user),
   });
 });
-
+//yomken zeyda 
 /* ================= LOGOUT ================= */
 router.post("/logout", authMiddleware, async (req, res) => {
   await pool.query(

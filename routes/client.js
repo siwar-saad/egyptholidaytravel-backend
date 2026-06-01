@@ -174,7 +174,7 @@ router.put("/change-password", authMiddleware, async (req, res) => {
 
 /* ================= BOOKINGS ================= */
 
-router.get("/bookings", authMiddleware, async (req, res) => {
+router.get("/mybookings", authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
       `
@@ -194,7 +194,7 @@ router.get("/bookings", authMiddleware, async (req, res) => {
       `,
       [req.user.email]
     );
-
+// hello
     const bookings = result.rows.map((booking) => ({
       id: booking.id,
       type: booking.booking_type || "package",
