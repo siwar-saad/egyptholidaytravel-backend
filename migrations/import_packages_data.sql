@@ -1,3 +1,24 @@
+DELETE FROM packages
+WHERE backend_name IN (
+  '( Cairo - Hurghada ) 5 Nights',
+  '( Cairo - Hurghada ) 6 Nights',
+  '( Cairo - Alexandria ) 6 Nights',
+  '( Cairo - Luxor ) 6 Nights',
+  'Cairo & Sharm El Sheikh Program',
+  'Cairo & North Coast Package - 6 Nights / 7 Days',
+  'Cairo & Ain El Sokhna Package - 6 Nights / 7 Days',
+  'Hilton Zamalek - 5 Nights / 6 Days',
+  'Hilton Ramsis - 3 Nights / 4 Days',
+  'Hilton Ramsis - 5 Nights / 6 Days',
+  '( Cairo – Hurghada ) 5 Nights',
+  '( Cairo – Hurghada ) 6 Nights',
+  '( Cairo – Alexandria ) 6 Nights',
+  '( Cairo – Luxor ) 6 Nights',
+  'Cairo & Sharm El Sheikh Program (Frontend)',
+  'Cairo & North Coast Package – 6 Nights / 7 Days',
+  'Cairo & Ain El Sokhna Package – 6 Nights / 7 Days'
+);
+
 INSERT INTO packages
 (
   title,
@@ -238,4 +259,199 @@ VALUES
   ]'::jsonb,
   '[]'::jsonb,
   7
+),
+(
+  'Hilton Zamalek Package',
+  'Hilton Zamalek Package',
+  'Hilton Zamalek - 5 Nights / 6 Days',
+  'Cairo',
+  '5 Nights / 6 Days',
+  'Pick up & drop off with Cairo tours and transportation included',
+  '',
+  'From 414$',
+  'Accommodation in hotel with breakfast; Pick up & drop off; Pyramids & Sphinx tour with ticket & transportation; Grand Egyptian Museum tour with ticket & transportation; Khan El Khalili and Old Egypt tour & mall; All taxes included; Flight ticket optional by request',
+  'Published',
+  '/images/packages/alexandria.png',
+  '[
+    {
+      "title": "Price Per Person",
+      "rows": [
+        {"city":"Cairo","nights":"5 Nights","hotel":"Hilton Zamalek","meal":"Breakfast","sgl":"555$","dbl":"444$","tpl":"414$"}
+      ]
+    },
+    {
+      "title": "Children Price",
+      "rows": [
+        {"city":"Child","nights":"0 - 2 Year","hotel":"-","meal":"-","sgl":"Free","dbl":"Free","tpl":"Free"},
+        {"city":"Child","nights":"2 - 12 Year","hotel":"-","meal":"-","sgl":"99$","dbl":"99$","tpl":"99$"},
+        {"city":"Child","nights":"6 - 12 Year","hotel":"-","meal":"-","sgl":"265$","dbl":"265$","tpl":"Second child: 265$"}
+      ]
+    }
+  ]'::jsonb,
+  '[]'::jsonb,
+  8
+),
+(
+  'Hilton Ramsis Package',
+  'Hilton Ramsis Package',
+  'Hilton Ramsis - 3 Nights / 4 Days',
+  'Cairo',
+  '3 Nights / 4 Days',
+  'Pick up & drop off with Cairo tours and transportation included',
+  '',
+  'From 249$',
+  'Accommodation in hotel with breakfast; Pick up & drop off; Pyramids & Sphinx tour with ticket & transportation; Grand Egyptian Museum tour with ticket & transportation; All taxes included; Flight ticket optional by request',
+  'Published',
+  '/images/packages/ainsokhna.jpg',
+  '[
+    {
+      "title": "Price Per Person",
+      "rows": [
+        {"city":"Cairo","nights":"3 Nights","hotel":"Hilton Ramsis","meal":"Breakfast","sgl":"370$","dbl":"269$","tpl":"249$"}
+      ]
+    },
+    {
+      "title": "Children Price",
+      "rows": [
+        {"city":"Child","nights":"0 - 2 Year","hotel":"-","meal":"-","sgl":"Free","dbl":"Free","tpl":"Free"},
+        {"city":"Child","nights":"2 - 12 Year","hotel":"-","meal":"-","sgl":"99$","dbl":"99$","tpl":"99$"},
+        {"city":"Child","nights":"6 - 12 Year","hotel":"-","meal":"-","sgl":"199$","dbl":"199$","tpl":"Second child: 199$"}
+      ]
+    }
+  ]'::jsonb,
+  '[]'::jsonb,
+  9
+),
+(
+  'Hilton Ramsis Package',
+  'Hilton Ramsis Package',
+  'Hilton Ramsis - 5 Nights / 6 Days',
+  'Cairo',
+  '5 Nights / 6 Days',
+  'Pick up & drop off with Cairo tours and transportation included',
+  '',
+  'From 379$',
+  'Accommodation in hotel with breakfast; Pick up & drop off; Pyramids & Sphinx tour with ticket & transportation; Grand Egyptian Museum tour with ticket & transportation; Khan El Khalili and Old Egypt tour & mall; All taxes included; Flight ticket optional by request',
+  'Published',
+  '/images/packages/cairo-alexandria1.png',
+  '[
+    {
+      "title": "Price Per Person",
+      "rows": [
+        {"city":"Cairo","nights":"5 Nights","hotel":"Hilton Ramsis","meal":"Breakfast","sgl":"499$","dbl":"389$","tpl":"379$"}
+      ]
+    },
+    {
+      "title": "Children Price",
+      "rows": [
+        {"city":"Child","nights":"0 - 2 Year","hotel":"-","meal":"-","sgl":"Free","dbl":"Free","tpl":"Free"},
+        {"city":"Child","nights":"2 - 12 Year","hotel":"-","meal":"-","sgl":"99$","dbl":"99$","tpl":"99$"},
+        {"city":"Child","nights":"6 - 12 Year","hotel":"-","meal":"-","sgl":"265$","dbl":"265$","tpl":"Second child: 265$"}
+      ]
+    }
+  ]'::jsonb,
+  '[]'::jsonb,
+  10
 );
+
+INSERT INTO packages
+(
+  title,
+  name,
+  backend_name,
+  route,
+  duration,
+  transfer,
+  transfer_reduction,
+  start_price,
+  programme,
+  visibility,
+  image,
+  options,
+  itinerary,
+  display_order
+)
+SELECT
+  copy.title,
+  copy.name,
+  copy.backend_name,
+  copy.route,
+  original.duration,
+  original.transfer,
+  original.transfer_reduction,
+  original.start_price,
+  original.programme,
+  original.visibility,
+  original.image,
+  original.options,
+  original.itinerary,
+  copy.display_order
+FROM (
+  VALUES
+    (
+      '( Cairo - Hurghada ) 5 Nights',
+      '( Cairo - Hurghada ) 5 Nights',
+      '( Cairo - Hurghada ) 5 Nights',
+      '( Cairo – Hurghada ) 5 Nights',
+      'Cairo – Hurghada',
+      11
+    ),
+    (
+      '( Cairo - Hurghada ) 6 Nights',
+      '( Cairo - Hurghada ) 6 Nights',
+      '( Cairo - Hurghada ) 6 Nights',
+      '( Cairo – Hurghada ) 6 Nights',
+      'Cairo – Hurghada',
+      12
+    ),
+    (
+      '( Cairo - Alexandria ) 6 Nights',
+      '( Cairo - Alexandria ) 6 Nights',
+      '( Cairo - Alexandria ) 6 Nights',
+      '( Cairo – Alexandria ) 6 Nights',
+      'Cairo – Alexandria',
+      13
+    ),
+    (
+      '( Cairo - Luxor ) 6 Nights',
+      '( Cairo - Luxor ) 6 Nights',
+      '( Cairo - Luxor ) 6 Nights',
+      '( Cairo – Luxor ) 6 Nights',
+      'Cairo – Luxor',
+      14
+    ),
+    (
+      'Cairo & Sharm El Sheikh Program',
+      'Cairo & Sharm El Sheikh Program',
+      'Cairo & Sharm El Sheikh Program',
+      'Cairo & Sharm El Sheikh Program (Frontend)',
+      'Cairo – Sharm El Sheikh',
+      15
+    ),
+    (
+      'Cairo & North Coast Package - 6 Nights / 7 Days',
+      'Cairo & North Coast Package',
+      'Cairo & North Coast Package',
+      'Cairo & North Coast Package – 6 Nights / 7 Days',
+      'Cairo – North Coast',
+      16
+    ),
+    (
+      'Cairo & Ain El Sokhna Package - 6 Nights / 7 Days',
+      'Cairo & Ain El Sokhna Package',
+      'Cairo & Ain El Sokhna Package',
+      'Cairo & Ain El Sokhna Package – 6 Nights / 7 Days',
+      'Cairo – Ain El Sokhna',
+      17
+    )
+) AS copy
+(
+  source_backend_name,
+  title,
+  name,
+  backend_name,
+  route,
+  display_order
+)
+JOIN packages original
+  ON original.backend_name = copy.source_backend_name;
