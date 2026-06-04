@@ -108,7 +108,7 @@ router.post("/clients", async (req, res) => {
           email,
           phone || "",
           city || "",
-          country || "Egypt",
+          country || "",
           role || "user",
           hashedPassword,
         ]
@@ -205,7 +205,7 @@ router.put("/clients/:id", async (req, res) => {
         email,
         phone || "",
         city || "",
-        country || "Egypt",
+        country || "",
         role || "user",
         hashedPassword,
         id,
@@ -231,7 +231,7 @@ router.put("/clients/:id", async (req, res) => {
         email,
         phone || "",
         city || "",
-        country || "Egypt",
+        country || "",
         role || "user",
         id,
       ];

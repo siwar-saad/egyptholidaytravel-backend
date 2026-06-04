@@ -10,6 +10,11 @@ const getCustomerName = (customerInfo = {}) =>
   customerInfo?.email ||
   "Client";
 
+const getAdminName = (req) =>
+  `${req.user?.first_name || ""} ${req.user?.last_name || ""}`.trim() ||
+  req.user?.email ||
+  "Admin";
+
 const allowedBookingStatuses = ["Pending", "Confirmed", "Cancelled"];
 
 /* ================= PACKAGE RESERVATIONS ================= */
@@ -102,6 +107,9 @@ router.post("/reservations", async (req, res) => {
           phone: phone || "",
           travelers: travelers || "",
           notes: notes || "",
+          createdBy: "admin",
+          adminName: getAdminName(req),
+          adminEmail: req.user?.email || "",
         },
         totalPrice || 0,
       ]
@@ -194,6 +202,9 @@ router.get("/hotels/reservations", async (req, res) => {
       totalPrice: booking.total_price || 0,
       reference: booking.booking_reference,
       notes: booking.customer_info?.notes || "",
+      createdBy: booking.customer_info?.createdBy || "client",
+      adminName: booking.customer_info?.adminName || "",
+      adminEmail: booking.customer_info?.adminEmail || "",
     }));
 
     res.json(reservations);
@@ -265,6 +276,9 @@ router.post("/hotels/reservations", async (req, res) => {
           phone: phone || "",
           travelers: travelers || "",
           notes: notes || "",
+          createdBy: "admin",
+          adminName: getAdminName(req),
+          adminEmail: req.user?.email || "",
         },
         totalPrice || 0,
       ]

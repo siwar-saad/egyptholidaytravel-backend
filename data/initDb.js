@@ -14,7 +14,7 @@ const initializeDatabase = async () => {
         last_name VARCHAR(100),
         phone VARCHAR(50),
         city VARCHAR(100),
-        country VARCHAR(100) DEFAULT 'Egypt',
+        country VARCHAR(100) DEFAULT '',
         avatar TEXT,
         role VARCHAR(20) DEFAULT 'user',
         token_hash TEXT,
@@ -163,7 +163,7 @@ const initializeDatabase = async () => {
     /* ================= ALTER TABLES ================= */
     await pool.query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS city VARCHAR(100);
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT 'Egypt';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT '';
       ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';
       ALTER TABLE users ADD COLUMN IF NOT EXISTS token_hash TEXT;

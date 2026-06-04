@@ -202,8 +202,8 @@ router.post("/signup", async (req, res) => {
         email,
         hashedPassword,
         phone || "",
-        city || "Mansoura",
-        country || "Egypt",
+        city || "",
+        country || "",
         "user",
       ]
     );

@@ -123,7 +123,7 @@ const mapClientBooking = (booking) => ({
 });
 
 /* ================= BOOKINGS ================= */
-router.get(["/bookings", "/mybookings"], authMiddleware, async (req, res) => {
+router.get(["/mybookings"], authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
       `

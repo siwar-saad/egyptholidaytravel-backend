@@ -23,13 +23,22 @@ const authMiddleware = async (req, res, next) => {
   try {
     const cookieToken = getCookie(req, "auth_token");
 
-    if (!cookieToken) {
-      return res.status(401).json({
-        error: "Access denied. No token provided.",
-      });
+    // 2. Fall back to Authorization: Bearer <token> header (mobile)
+    const authHeader =
+      req.headers["authorization"] || req.headers["Authorization"];
+    const headerToken = authHeader?.startsWith("Bearer ")
+      ? authHeader.slice(7)
+      : null;
+
+    const rawToken = cookieToken || headerToken;
+
+    if (!rawToken) {
+      return res
+        .status(401)
+        .json({ error: "Access denied. No token provided." });
     }
 
-    const token = decodeURIComponent(cookieToken);
+    const token = decodeURIComponent(rawToken);
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
@@ -39,7 +48,7 @@ const authMiddleware = async (req, res, next) => {
       FROM users
       WHERE id = $1
       `,
-      [decoded.id]
+      [decoded.id],
     );
 
     if (result.rows.length === 0) {
@@ -50,7 +59,6 @@ const authMiddleware = async (req, res, next) => {
 
     const user = result.rows[0];
 
-    // Compare the cookie JWT against the hash stored in DB so logout revokes it.
     if (
       !user.token_hash ||
       user.token_hash !== hashToken(token) ||
@@ -71,5 +79,4 @@ const authMiddleware = async (req, res, next) => {
     });
   }
 };
-
 module.exports = authMiddleware;

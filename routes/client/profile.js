@@ -32,8 +32,8 @@ router.get("/profile", authMiddleware, async (req, res) => {
       name: `${user.first_name || ""} ${user.last_name || ""}`.trim(),
       email: user.email,
       phone: user.phone || "",
-      city: user.city || "Mansoura",
-      country: user.country || "Egypt",
+      city: user.city || "",
+      country: user.country || "",
       avatar: user.avatar || "",
       role: user.role || "user",
     });
@@ -79,8 +79,8 @@ router.put("/profile", authMiddleware, async (req, res) => {
         nextFirstName,
         nextLastName,
         phone || "",
-        city || "Mansoura",
-        country || "Egypt",
+        city || "",
+        country || "",
         avatar || "",
         req.user.id,
       ]
@@ -95,8 +95,8 @@ router.put("/profile", authMiddleware, async (req, res) => {
       name: `${user.first_name || ""} ${user.last_name || ""}`.trim(),
       email: user.email,
       phone: user.phone || "",
-      city: user.city || "Mansoura",
-      country: user.country || "Egypt",
+      city: user.city || "",
+      country: user.country || "",
       avatar: user.avatar || "",
       role: user.role || "user",
     });
