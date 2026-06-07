@@ -85,6 +85,22 @@ const cleanUser = (user) => ({
   country: user.country || "",
 });
 
+const createVerificationCode = () =>
+  Math.floor(100000 + Math.random() * 900000).toString();
+
+const sendSignupVerificationEmail = async (email, name, code) => {
+  await sendEmail(
+    email,
+    "Egypt Holiday - Verify Your Account",
+    `
+      <h2>Hello ${name || "Client"},</h2>
+      <p>Your account verification code is:</p>
+      <h1>${code}</h1>
+      <p>This code expires in 15 minutes.</p>
+    `
+  );
+};
+
 const loginAttempts = new Map();
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_LOCK_TIME = 15 * 60 * 1000;
@@ -177,53 +193,176 @@ router.post("/signup", async (req, res) => {
     }
 
     const existingUser = await pool.query(
-      "SELECT id FROM users WHERE email = $1",
+      "SELECT id, email_verified FROM users WHERE email = $1",
       [email]
     );
 
-    if (existingUser.rows.length > 0) {
+    if (
+      existingUser.rows.length > 0 &&
+      existingUser.rows[0].email_verified !== false
+    ) {
       return res.status(400).json({
         error: "Email already exists",
       });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const verificationCode = createVerificationCode();
+    const hashedVerificationCode = await bcrypt.hash(verificationCode, 10);
+    const userValues = [
+      firstName || first_name || "",
+      lastName || last_name || "",
+      email,
+      hashedPassword,
+      phone || "",
+      city || "",
+      country || "",
+      "user",
+      hashedVerificationCode,
+    ];
 
-    const result = await pool.query(
-      `
-      INSERT INTO users
-      (first_name, last_name, email, password, phone, city, country, role)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-      RETURNING id, first_name, last_name, email, phone, city, country, role
-      `,
-      [
-        firstName || first_name || "",
-        lastName || last_name || "",
-        email,
-        hashedPassword,
-        phone || "",
-        city || "",
-        country || "",
-        "user",
-      ]
-    );
+    const result =
+      existingUser.rows.length > 0
+        ? await pool.query(
+            `
+            UPDATE users
+            SET first_name = $1,
+                last_name = $2,
+                email = $3,
+                password = $4,
+                phone = $5,
+                city = $6,
+                country = $7,
+                role = $8,
+                email_verified = false,
+                email_verification_code = $9,
+                email_verification_expires = NOW() + INTERVAL '15 minutes',
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $10
+            RETURNING id, first_name, last_name, email, phone, city, country, role
+            `,
+            [...userValues, existingUser.rows[0].id]
+          )
+        : await pool.query(
+            `
+            INSERT INTO users
+            (
+              first_name,
+              last_name,
+              email,
+              password,
+              phone,
+              city,
+              country,
+              role,
+              email_verified,
+              email_verification_code,
+              email_verification_expires
+            )
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,false,$9,NOW() + INTERVAL '15 minutes')
+            RETURNING id, first_name, last_name, email, phone, city, country, role
+            `,
+            userValues
+          );
 
     const user = result.rows[0];
-    const tokenData = createToken(user);
 
-    await storeUserToken(user.id, tokenData);
-    setAuthCookie(res, tokenData);
+    await sendSignupVerificationEmail(
+      user.email,
+      `${user.first_name || ""} ${user.last_name || ""}`.trim(),
+      verificationCode
+    );
 
     res.status(201).json({
       success: true,
-      token: tokenData.token,
-      tokenExpires: tokenData.tokenExpires,
-      user: cleanUser(user),
+      verificationRequired: true,
+      requiresVerification: true,
+      email: user.email,
+      message: "Verification code sent to your email",
     });
   } catch (error) {
     console.error("Signup error:", error);
     res.status(500).json({
       error: "Unable to create account",
+    });
+  }
+});
+
+/* ================= VERIFY SIGNUP CODE ================= */
+router.post("/verify-signup-code", async (req, res) => {
+  try {
+    const email = req.body.email?.trim().toLowerCase();
+    const code = req.body.code?.trim();
+
+    if (!email || !code) {
+      return res.status(400).json({
+        error: "Email and verification code are required",
+      });
+    }
+
+    const result = await pool.query(
+      `
+      SELECT
+        id,
+        first_name,
+        last_name,
+        email,
+        phone,
+        city,
+        country,
+        role,
+        email_verification_code
+      FROM users
+      WHERE email = $1
+      AND email_verified = false
+      AND email_verification_code IS NOT NULL
+      AND email_verification_expires > NOW()
+      `,
+      [email]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({
+        error: "Invalid or expired verification code",
+      });
+    }
+
+    const user = result.rows[0];
+    const validCode = await bcrypt.compare(code, user.email_verification_code);
+
+    if (!validCode) {
+      return res.status(400).json({
+        error: "Invalid or expired verification code",
+      });
+    }
+
+    await pool.query(
+      `
+      UPDATE users
+      SET email_verified = true,
+          email_verification_code = NULL,
+          email_verification_expires = NULL,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      `,
+      [user.id]
+    );
+
+    const tokenData = createToken(user);
+
+    await storeUserToken(user.id, tokenData);
+    setAuthCookie(res, tokenData);
+
+    res.json({
+      success: true,
+      token: tokenData.token,
+      tokenExpires: tokenData.tokenExpires,
+      user: cleanUser({ ...user, email_verified: true }),
+    });
+  } catch (error) {
+    console.error("Verify signup code error:", error);
+    res.status(500).json({
+      error: "Unable to verify account",
     });
   }
 });
@@ -250,7 +389,7 @@ router.post("/login", async (req, res) => {
 
     const result = await pool.query(
       `
-      SELECT id, first_name, last_name, email, phone, city, country, password, role
+      SELECT id, first_name, last_name, email, phone, city, country, password, role, email_verified
       FROM users
       WHERE email = $1
       `,
@@ -266,6 +405,12 @@ router.post("/login", async (req, res) => {
     }
 
     const user = result.rows[0];
+
+    if (user.email_verified === false) {
+      return res.status(403).json({
+        error: "Please verify your email before login",
+      });
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
 

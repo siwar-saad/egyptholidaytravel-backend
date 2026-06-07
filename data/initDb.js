@@ -17,6 +17,9 @@ const initializeDatabase = async () => {
         country VARCHAR(100) DEFAULT '',
         avatar TEXT,
         role VARCHAR(20) DEFAULT 'user',
+        email_verified BOOLEAN DEFAULT true,
+        email_verification_code TEXT,
+        email_verification_expires TIMESTAMP WITH TIME ZONE,
         token_hash TEXT,
         token_expires TIMESTAMP WITH TIME ZONE,
         reset_token TEXT,
@@ -166,8 +169,16 @@ const initializeDatabase = async () => {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT '';
       ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT true;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_code TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_expires TIMESTAMP WITH TIME ZONE;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS token_hash TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS token_expires TIMESTAMP WITH TIME ZONE;
+
+      UPDATE users
+      SET email_verified = true
+      WHERE email_verified = false
+      AND email_verification_code IS NULL;
 
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS programme TEXT;
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS name VARCHAR(255);
