@@ -73,6 +73,31 @@ const clearAuthCookie = (res) => {
   });
 };
 
+const getCookie = (req, name) => {
+  const cookies = req.headers.cookie || "";
+
+  return cookies
+    .split(";")
+    .map((cookie) => cookie.trim())
+    .find((cookie) => cookie.startsWith(`${name}=`))
+    ?.split("=")
+    .slice(1)
+    .join("=");
+};
+
+const getRequestToken = (req) => {
+  const cookieToken = getCookie(req, "auth_token");
+  const authHeader =
+    req.headers["authorization"] || req.headers["Authorization"];
+  const headerToken = authHeader?.startsWith("Bearer ")
+    ? authHeader.slice(7)
+    : null;
+
+  const rawToken = cookieToken || headerToken;
+
+  return rawToken ? decodeURIComponent(rawToken) : "";
+};
+
 const cleanUser = (user) => ({
   id: user.id,
   email: user.email,
@@ -84,6 +109,27 @@ const cleanUser = (user) => ({
   city: user.city || "",
   country: user.country || "",
 });
+
+const ensureAuthUserColumns = async () => {
+  await pool.query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name VARCHAR(100);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(100);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS city VARCHAR(100);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT '';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT true;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_code TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_expires TIMESTAMP WITH TIME ZONE;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS token_hash TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS token_expires TIMESTAMP WITH TIME ZONE;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMP WITH TIME ZONE;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+  `);
+};
 
 const createVerificationCode = () =>
   Math.floor(100000 + Math.random() * 900000).toString();
@@ -144,17 +190,29 @@ router.get("/me", authMiddleware, async (req, res) => {
 });
 //yomken zeyda 
 /* ================= LOGOUT ================= */
-router.post("/logout", authMiddleware, async (req, res) => {
-  await pool.query(
-    `
-    UPDATE users
-    SET token_hash = NULL,
-        token_expires = NULL,
-        updated_at = CURRENT_TIMESTAMP
-    WHERE id = $1
-    `,
-    [req.user.id]
-  );
+router.post("/logout", async (req, res) => {
+  const token = getRequestToken(req);
+
+  if (token) {
+    try {
+      await ensureAuthUserColumns();
+
+      const decoded = jwt.verify(token, JWT_SECRET);
+
+      await pool.query(
+        `
+        UPDATE users
+        SET token_hash = NULL,
+            token_expires = NULL,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1
+        `,
+        [decoded.id]
+      );
+    } catch (error) {
+      console.log("Logout token cleanup skipped:", error.message);
+    }
+  }
 
   clearAuthCookie(res);
 
@@ -167,6 +225,8 @@ router.post("/logout", authMiddleware, async (req, res) => {
 /* ================= SIGNUP ================= */
 router.post("/signup", async (req, res) => {
   try {
+    await ensureAuthUserColumns();
+
     const {
       firstName,
       lastName,
@@ -267,11 +327,20 @@ router.post("/signup", async (req, res) => {
 
     const user = result.rows[0];
 
-    await sendSignupVerificationEmail(
-      user.email,
-      `${user.first_name || ""} ${user.last_name || ""}`.trim(),
-      verificationCode
-    );
+    try {
+      await sendSignupVerificationEmail(
+        user.email,
+        `${user.first_name || ""} ${user.last_name || ""}`.trim(),
+        verificationCode
+      );
+    } catch (emailError) {
+      console.error("Signup verification email error:", emailError);
+
+      return res.status(500).json({
+        error:
+          "Account was prepared, but the verification email could not be sent. Please check EMAIL_USER, EMAIL_PASS and EMAIL_FROM.",
+      });
+    }
 
     res.status(201).json({
       success: true,
@@ -291,6 +360,8 @@ router.post("/signup", async (req, res) => {
 /* ================= VERIFY SIGNUP CODE ================= */
 router.post("/verify-signup-code", async (req, res) => {
   try {
+    await ensureAuthUserColumns();
+
     const email = req.body.email?.trim().toLowerCase();
     const code = req.body.code?.trim();
 
@@ -370,6 +441,8 @@ router.post("/verify-signup-code", async (req, res) => {
 /* ================= LOGIN ================= */
 router.post("/login", async (req, res) => {
   try {
+    await ensureAuthUserColumns();
+
     const email = req.body.email?.trim().toLowerCase();
     const { password, rememberMe } = req.body;
 

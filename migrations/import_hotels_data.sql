@@ -1,3 +1,4 @@
+DELETE FROM hotels;
 INSERT INTO hotels
 (name, city, meal, image, gallery, group_title, group_subtitle, periods, display_order)
 VALUES

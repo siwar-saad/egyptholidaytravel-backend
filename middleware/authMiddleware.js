@@ -18,9 +18,25 @@ const getCookie = (req, name) => {
     .join("=");
 };
 
+const ensureUserAuthColumns = async () => {
+  await pool.query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name VARCHAR(100);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(100);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS city VARCHAR(100);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT '';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS token_hash TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS token_expires TIMESTAMP WITH TIME ZONE;
+  `);
+};
+
 /* ================= AUTH MIDDLEWARE ================= */
 const authMiddleware = async (req, res, next) => {
   try {
+    await ensureUserAuthColumns();
+
     const cookieToken = getCookie(req, "auth_token");
 
     // 2. Fall back to Authorization: Bearer <token> header (mobile)
