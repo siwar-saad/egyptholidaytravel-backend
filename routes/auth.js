@@ -438,6 +438,77 @@ router.post("/verify-signup-code", async (req, res) => {
   }
 });
 
+/* ================= RESEND SIGNUP CODE ================= */
+router.post("/resend-verification-code", async (req, res) => {
+  try {
+    await ensureAuthUserColumns();
+
+    const email = req.body.email?.trim().toLowerCase();
+
+    if (!email) {
+      return res.status(400).json({
+        error: "Email is required",
+      });
+    }
+
+    const result = await pool.query(
+      `
+      SELECT id, first_name, last_name, email, email_verified
+      FROM users
+      WHERE email = $1
+      `,
+      [email]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        error: "Account not found",
+      });
+    }
+
+    const user = result.rows[0];
+
+    if (user.email_verified !== false) {
+      return res.json({
+        success: true,
+        alreadyVerified: true,
+        message: "Email is already verified. You can login now.",
+      });
+    }
+
+    const verificationCode = createVerificationCode();
+    const hashedVerificationCode = await bcrypt.hash(verificationCode, 10);
+
+    await pool.query(
+      `
+      UPDATE users
+      SET email_verification_code = $1,
+          email_verification_expires = NOW() + INTERVAL '15 minutes',
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $2
+      `,
+      [hashedVerificationCode, user.id]
+    );
+
+    await sendSignupVerificationEmail(
+      user.email,
+      `${user.first_name || ""} ${user.last_name || ""}`.trim(),
+      verificationCode
+    );
+
+    res.json({
+      success: true,
+      email: user.email,
+      message: "Verification code sent to your email",
+    });
+  } catch (error) {
+    console.error("Resend verification code error:", error);
+    res.status(500).json({
+      error: "Unable to resend verification code",
+    });
+  }
+});
+
 /* ================= LOGIN ================= */
 router.post("/login", async (req, res) => {
   try {

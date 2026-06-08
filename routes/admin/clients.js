@@ -7,6 +7,20 @@ const { sendEmail } = require("../../services/emailService");
 const router = express.Router();
 
 /* ================= CLIENT HELPERS ================= */
+const ensureClientColumns = async () => {
+  await pool.query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name VARCHAR(100);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(100);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS city VARCHAR(100);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT '';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT true;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_code TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_expires TIMESTAMP WITH TIME ZONE;
+  `);
+};
+
 const generatePassword = () => {
   const alphabet =
     "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
@@ -19,6 +33,8 @@ const generatePassword = () => {
 /* ================= ADMIN CLIENTS ================= */
 router.get("/clients", async (req, res) => {
   try {
+    await ensureClientColumns();
+
     const result = await pool.query(`
       SELECT
         id,
@@ -29,6 +45,7 @@ router.get("/clients", async (req, res) => {
         city,
         country,
         role,
+        email_verified,
         created_at
       FROM users
       ORDER BY id DESC
@@ -44,6 +61,8 @@ router.get("/clients", async (req, res) => {
 /* ================= CREATE CLIENT ================= */
 router.post("/clients", async (req, res) => {
   try {
+    await ensureClientColumns();
+
     const {
       firstName,
       lastName,
@@ -88,9 +107,10 @@ router.post("/clients", async (req, res) => {
           city,
           country,
           role,
+          email_verified,
           password
         )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,true,$8)
         RETURNING
           id,
           first_name,
@@ -100,6 +120,7 @@ router.post("/clients", async (req, res) => {
           city,
           country,
           role,
+          email_verified,
           created_at
         `,
         [
@@ -154,6 +175,8 @@ router.post("/clients", async (req, res) => {
 /* ================= UPDATE CLIENT ================= */
 router.put("/clients/:id", async (req, res) => {
   try {
+    await ensureClientColumns();
+
     const { id } = req.params;
     const {
       firstName,
@@ -196,7 +219,7 @@ router.put("/clients/:id", async (req, res) => {
             password = $8,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = $9
-        RETURNING id, first_name, last_name, email, phone, city, country, role
+        RETURNING id, first_name, last_name, email, phone, city, country, role, email_verified
       `;
 
       values = [
@@ -222,7 +245,7 @@ router.put("/clients/:id", async (req, res) => {
             role = $7,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = $8
-        RETURNING id, first_name, last_name, email, phone, city, country, role
+        RETURNING id, first_name, last_name, email, phone, city, country, role, email_verified
       `;
 
       values = [
