@@ -147,6 +147,28 @@ const sendSignupVerificationEmail = async (email, name, code) => {
   );
 };
 
+const getEmailErrorMessage = (error) => {
+  if (
+    !process.env.EMAIL_HOST ||
+    !process.env.EMAIL_PORT ||
+    !process.env.EMAIL_USER ||
+    !process.env.EMAIL_PASS ||
+    !process.env.EMAIL_FROM
+  ) {
+    return "Email configuration is missing in Backend/.env.";
+  }
+
+  if (error?.code === "EAUTH") {
+    return "Gmail authentication failed. Check EMAIL_USER and EMAIL_PASS app password.";
+  }
+
+  if (error?.code === "ECONNECTION" || error?.code === "ETIMEDOUT") {
+    return "Cannot connect to the email server. Check EMAIL_HOST, EMAIL_PORT and EMAIL_SECURE.";
+  }
+
+  return error?.message || "Unknown email sending error.";
+};
+
 const loginAttempts = new Map();
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_LOCK_TIME = 15 * 60 * 1000;
@@ -337,8 +359,8 @@ router.post("/signup", async (req, res) => {
       console.error("Signup verification email error:", emailError);
 
       return res.status(500).json({
-        error:
-          "Account was prepared, but the verification email could not be sent. Please check EMAIL_USER, EMAIL_PASS and EMAIL_FROM.",
+        code: "EMAIL_SEND_FAILED",
+        error: getEmailErrorMessage(emailError),
       });
     }
 
@@ -490,11 +512,20 @@ router.post("/resend-verification-code", async (req, res) => {
       [hashedVerificationCode, user.id]
     );
 
-    await sendSignupVerificationEmail(
-      user.email,
-      `${user.first_name || ""} ${user.last_name || ""}`.trim(),
-      verificationCode
-    );
+    try {
+      await sendSignupVerificationEmail(
+        user.email,
+        `${user.first_name || ""} ${user.last_name || ""}`.trim(),
+        verificationCode
+      );
+    } catch (emailError) {
+      console.error("Resend verification email error:", emailError);
+
+      return res.status(500).json({
+        code: "EMAIL_SEND_FAILED",
+        error: getEmailErrorMessage(emailError),
+      });
+    }
 
     res.json({
       success: true,
