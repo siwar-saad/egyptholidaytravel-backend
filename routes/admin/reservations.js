@@ -198,6 +198,7 @@ router.get("/hotels/reservations", async (req, res) => {
       checkOut: booking.selected_hotel?.checkOut || "",
       roomType: booking.selected_hotel?.roomType || "",
       status: booking.status || "Pending",
+      created_at: booking.created_at,
       date: booking.created_at?.toISOString().split("T")[0],
       totalPrice: booking.total_price || 0,
       reference: booking.booking_reference,

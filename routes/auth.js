@@ -135,7 +135,7 @@ const createVerificationCode = () =>
   Math.floor(100000 + Math.random() * 900000).toString();
 
 const sendSignupVerificationEmail = async (email, name, code) => {
-  await sendEmail(
+  const info = await sendEmail(
     email,
     "Egypt Holiday - Verify Your Account",
     `
@@ -145,6 +145,16 @@ const sendSignupVerificationEmail = async (email, name, code) => {
       <p>This code expires in 15 minutes.</p>
     `
   );
+
+  if (info.rejected?.length > 0 || info.accepted?.length === 0) {
+    throw new Error(
+      `SMTP did not accept the recipient. Accepted: ${
+        info.accepted?.join(", ") || "none"
+      }. Rejected: ${info.rejected?.join(", ") || "none"}`
+    );
+  }
+
+  return info;
 };
 
 const getEmailErrorMessage = (error) => {
@@ -349,8 +359,10 @@ router.post("/signup", async (req, res) => {
 
     const user = result.rows[0];
 
+    let emailInfo;
+
     try {
-      await sendSignupVerificationEmail(
+      emailInfo = await sendSignupVerificationEmail(
         user.email,
         `${user.first_name || ""} ${user.last_name || ""}`.trim(),
         verificationCode
@@ -369,6 +381,12 @@ router.post("/signup", async (req, res) => {
       verificationRequired: true,
       requiresVerification: true,
       email: user.email,
+      emailDelivery: {
+        messageId: emailInfo?.messageId,
+        accepted: emailInfo?.accepted || [],
+        rejected: emailInfo?.rejected || [],
+        response: emailInfo?.response,
+      },
       message: "Verification code sent to your email",
     });
   } catch (error) {
@@ -512,8 +530,10 @@ router.post("/resend-verification-code", async (req, res) => {
       [hashedVerificationCode, user.id]
     );
 
+    let emailInfo;
+
     try {
-      await sendSignupVerificationEmail(
+      emailInfo = await sendSignupVerificationEmail(
         user.email,
         `${user.first_name || ""} ${user.last_name || ""}`.trim(),
         verificationCode
@@ -530,6 +550,12 @@ router.post("/resend-verification-code", async (req, res) => {
     res.json({
       success: true,
       email: user.email,
+      emailDelivery: {
+        messageId: emailInfo?.messageId,
+        accepted: emailInfo?.accepted || [],
+        rejected: emailInfo?.rejected || [],
+        response: emailInfo?.response,
+      },
       message: "Verification code sent to your email",
     });
   } catch (error) {

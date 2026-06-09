@@ -21,7 +21,12 @@ const sendEmail = async (to, subject, html) => {
     html,
   });
 
-  console.log("Email sent:", info.messageId);
+  console.log("Email sent:", {
+    messageId: info.messageId,
+    accepted: info.accepted,
+    rejected: info.rejected,
+    response: info.response,
+  });
   return info;
 };
 

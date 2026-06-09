@@ -8,6 +8,40 @@ const router = express.Router();
 const packageImageDir = path.join(__dirname, "../../public/images/packages");
 
 /* ================= PACKAGE HELPERS ================= */
+const ensurePackageColumns = async () => {
+  await pool.query(`
+    ALTER TABLE packages
+      ADD COLUMN IF NOT EXISTS title VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS name VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS backend_name VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS route VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS duration VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS transfer TEXT,
+      ADD COLUMN IF NOT EXISTS transfer_reduction VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS start_price VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS programme TEXT,
+      ADD COLUMN IF NOT EXISTS visibility VARCHAR(50) DEFAULT 'Private',
+      ADD COLUMN IF NOT EXISTS image TEXT,
+      ADD COLUMN IF NOT EXISTS options JSONB DEFAULT '[]'::jsonb,
+      ADD COLUMN IF NOT EXISTS itinerary JSONB DEFAULT '[]'::jsonb,
+      ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  `);
+
+  await pool.query(`
+    UPDATE packages
+    SET
+      title = COALESCE(NULLIF(title, ''), NULLIF(name, ''), 'Package'),
+      name = COALESCE(NULLIF(name, ''), NULLIF(title, ''), 'Package'),
+      backend_name = COALESCE(NULLIF(backend_name, ''), NULLIF(title, ''), NULLIF(name, ''), 'Package'),
+      visibility = COALESCE(NULLIF(visibility, ''), 'Private'),
+      options = COALESCE(options, '[]'::jsonb),
+      itinerary = COALESCE(itinerary, '[]'::jsonb),
+      display_order = COALESCE(display_order, 0),
+      created_at = COALESCE(created_at, CURRENT_TIMESTAMP)
+  `);
+};
+
 const ensurePackageImageDir = () => {
   if (!fs.existsSync(packageImageDir)) {
     fs.mkdirSync(packageImageDir, { recursive: true });
@@ -53,6 +87,8 @@ const mapPackage = (row) => ({
 /* ================= ADMIN PACKAGES ================= */
 router.get("/packages", async (req, res) => {
   try {
+    await ensurePackageColumns();
+
     const result = await pool.query(`
       SELECT
         id,
@@ -120,6 +156,8 @@ router.post("/packages/upload-image", async (req, res) => {
 /* ================= CREATE PACKAGE ================= */
 router.post("/packages", async (req, res) => {
   try {
+    await ensurePackageColumns();
+
     const {
       name,
       title,
@@ -217,6 +255,8 @@ router.post("/packages", async (req, res) => {
 /* ================= UPDATE PACKAGE ================= */
 router.put("/packages/:id", async (req, res) => {
   try {
+    await ensurePackageColumns();
+
     const { id } = req.params;
     const {
       name,
@@ -318,6 +358,8 @@ router.put("/packages/:id", async (req, res) => {
 /* ================= UPDATE PACKAGE VISIBILITY ================= */
 router.put("/packages/:id/visibility", async (req, res) => {
   try {
+    await ensurePackageColumns();
+
     const { id } = req.params;
     const { visibility } = req.body;
 
