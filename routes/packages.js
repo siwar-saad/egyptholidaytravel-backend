@@ -24,6 +24,13 @@ const ensurePackageColumns = async () => {
   `);
 
   await pool.query(`
+    ALTER TABLE packages
+      ALTER COLUMN start_price TYPE VARCHAR(100) USING start_price::text,
+      ALTER COLUMN price TYPE VARCHAR(100) USING price::text,
+      ALTER COLUMN transfer_reduction TYPE VARCHAR(255) USING transfer_reduction::text
+  `);
+
+  await pool.query(`
     UPDATE packages
     SET
       title = COALESCE(NULLIF(title, ''), NULLIF(name, ''), 'Package'),
