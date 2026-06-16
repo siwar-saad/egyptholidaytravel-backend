@@ -110,27 +110,6 @@ const cleanUser = (user) => ({
   country: user.country || "",
 });
 
-const ensureAuthUserColumns = async () => {
-  await pool.query(`
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name VARCHAR(100);
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(100);
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS city VARCHAR(100);
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT '';
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT;
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT true;
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_code TEXT;
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_expires TIMESTAMP WITH TIME ZONE;
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS token_hash TEXT;
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS token_expires TIMESTAMP WITH TIME ZONE;
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT;
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMP WITH TIME ZONE;
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
-  `);
-};
-
 const createVerificationCode = () =>
   Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -182,6 +161,10 @@ const getEmailErrorMessage = (error) => {
 const loginAttempts = new Map();
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_LOCK_TIME = 15 * 60 * 1000;
+const signupAttempts = new Map();
+const SIGNUP_WINDOW_TIME = 15 * 60 * 1000;
+const MAX_SIGNUP_ATTEMPTS_PER_IP = 10;
+const MAX_SIGNUP_ATTEMPTS_PER_EMAIL = 3;
 
 /* ================= LOGIN RATE LIMIT ================= */
 // Lightweight in-memory lockout to slow repeated password guessing attempts.
@@ -213,6 +196,64 @@ const recordFailedLogin = (key) => {
   });
 };
 
+/* ================= SIGNUP RATE LIMIT ================= */
+// Limits account creation and verification email sends without adding a dependency.
+const checkSignupRateLimit = (key, maxAttempts) => {
+  const now = Date.now();
+  const attempts = (signupAttempts.get(key) || []).filter(
+    (timestamp) => now - timestamp < SIGNUP_WINDOW_TIME
+  );
+
+  if (attempts.length >= maxAttempts) {
+    return {
+      limited: true,
+      retryAfter: Math.ceil(
+        (attempts[0] + SIGNUP_WINDOW_TIME - now) / 1000
+      ),
+    };
+  }
+
+  attempts.push(now);
+  signupAttempts.set(key, attempts);
+
+  return {
+    limited: false,
+    retryAfter: 0,
+  };
+};
+
+const enforceSignupRateLimit = (req, res, email) => {
+  const ipLimit = checkSignupRateLimit(
+    `signup:ip:${req.ip}`,
+    MAX_SIGNUP_ATTEMPTS_PER_IP
+  );
+
+  if (ipLimit.limited) {
+    res.set("Retry-After", String(ipLimit.retryAfter));
+
+    return res.status(429).json({
+      error: "Too many signup attempts. Please try again later.",
+      retryAfter: ipLimit.retryAfter,
+    });
+  }
+
+  const emailLimit = checkSignupRateLimit(
+    `signup:email:${email}`,
+    MAX_SIGNUP_ATTEMPTS_PER_EMAIL
+  );
+
+  if (emailLimit.limited) {
+    res.set("Retry-After", String(emailLimit.retryAfter));
+
+    return res.status(429).json({
+      error: "Too many verification emails sent. Please try again later.",
+      retryAfter: emailLimit.retryAfter,
+    });
+  }
+
+  return null;
+};
+
 /* ================= CURRENT USER ================= */
 router.get("/me", authMiddleware, async (req, res) => {
   res.json({
@@ -227,8 +268,6 @@ router.post("/logout", async (req, res) => {
 
   if (token) {
     try {
-      await ensureAuthUserColumns();
-
       const decoded = jwt.verify(token, JWT_SECRET);
 
       await pool.query(
@@ -257,8 +296,6 @@ router.post("/logout", async (req, res) => {
 /* ================= SIGNUP ================= */
 router.post("/signup", async (req, res) => {
   try {
-    await ensureAuthUserColumns();
-
     const {
       firstName,
       lastName,
@@ -282,6 +319,12 @@ router.post("/signup", async (req, res) => {
       return res.status(400).json({
         error: "Passwords do not match",
       });
+    }
+
+    const rateLimitedResponse = enforceSignupRateLimit(req, res, email);
+
+    if (rateLimitedResponse) {
+      return rateLimitedResponse;
     }
 
     const existingUser = await pool.query(
@@ -400,8 +443,6 @@ router.post("/signup", async (req, res) => {
 /* ================= VERIFY SIGNUP CODE ================= */
 router.post("/verify-signup-code", async (req, res) => {
   try {
-    await ensureAuthUserColumns();
-
     const email = req.body.email?.trim().toLowerCase();
     const code = req.body.code?.trim();
 
@@ -481,14 +522,18 @@ router.post("/verify-signup-code", async (req, res) => {
 /* ================= RESEND SIGNUP CODE ================= */
 router.post("/resend-verification-code", async (req, res) => {
   try {
-    await ensureAuthUserColumns();
-
     const email = req.body.email?.trim().toLowerCase();
 
     if (!email) {
       return res.status(400).json({
         error: "Email is required",
       });
+    }
+
+    const rateLimitedResponse = enforceSignupRateLimit(req, res, email);
+
+    if (rateLimitedResponse) {
+      return rateLimitedResponse;
     }
 
     const result = await pool.query(
@@ -569,8 +614,6 @@ router.post("/resend-verification-code", async (req, res) => {
 /* ================= LOGIN ================= */
 router.post("/login", async (req, res) => {
   try {
-    await ensureAuthUserColumns();
-
     const email = req.body.email?.trim().toLowerCase();
     const { password, rememberMe } = req.body;
 

@@ -67,10 +67,9 @@ router.post("/bookings", authMiddleware, async (req, res) => {
 
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    console.error("Create client booking error:", err.message);
+    console.error("Create client booking error:", err);
     res.status(500).json({
       error: "Create client booking error",
-      details: err.message,
     });
   }
 });
@@ -148,9 +147,9 @@ router.get(["/mybookings"], authMiddleware, async (req, res) => {
 
     res.json(bookings);
   } catch (err) {
+    console.error("Bookings error:", err);
     res.status(500).json({
       error: "Bookings error",
-      details: err.message,
     });
   }
 });

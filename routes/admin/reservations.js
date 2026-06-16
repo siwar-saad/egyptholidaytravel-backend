@@ -17,10 +17,37 @@ const getAdminName = (req) =>
 
 const allowedBookingStatuses = ["Pending", "Confirmed", "Cancelled"];
 
+/* ================= PAGINATION ================= */
+const getPagination = (req) => {
+  const page = Math.max(Number(req.query.page) || 1, 1);
+  const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 100);
+
+  return {
+    page,
+    limit,
+    offset: (page - 1) * limit,
+  };
+};
+
+const setPaginationHeaders = (res, total, page, limit) => {
+  res.set("X-Total-Count", String(total));
+  res.set("X-Page", String(page));
+  res.set("X-Limit", String(limit));
+  res.set("X-Total-Pages", String(Math.ceil(total / limit)));
+};
+
 /* ================= PACKAGE RESERVATIONS ================= */
 router.get("/reservations", async (req, res) => {
   try {
-    const result = await pool.query(`
+    const { page, limit, offset } = getPagination(req);
+    const countResult = await pool.query(`
+      SELECT COUNT(*) AS total
+      FROM bookings
+      WHERE booking_type = 'package'
+         OR booking_type IS NULL
+    `);
+    const result = await pool.query(
+      `
       SELECT
         id,
         booking_reference,
@@ -36,8 +63,12 @@ router.get("/reservations", async (req, res) => {
       WHERE booking_type = 'package'
          OR booking_type IS NULL
       ORDER BY created_at DESC
-    `);
+      LIMIT $1 OFFSET $2
+      `,
+      [limit, offset]
+    );
 
+    setPaginationHeaders(res, Number(countResult.rows[0].total), page, limit);
     res.json(result.rows);
   } catch (error) {
     console.error("Reservations error:", error);
@@ -166,7 +197,14 @@ router.put("/reservations/:id/status", async (req, res) => {
 /* ================= HOTEL RESERVATIONS ================= */
 router.get("/hotels/reservations", async (req, res) => {
   try {
-    const result = await pool.query(`
+    const { page, limit, offset } = getPagination(req);
+    const countResult = await pool.query(`
+      SELECT COUNT(*) AS total
+      FROM bookings
+      WHERE booking_type = 'hotel'
+    `);
+    const result = await pool.query(
+      `
       SELECT
         id,
         booking_reference,
@@ -179,7 +217,10 @@ router.get("/hotels/reservations", async (req, res) => {
       FROM bookings
       WHERE booking_type = 'hotel'
       ORDER BY created_at DESC
-    `);
+      LIMIT $1 OFFSET $2
+      `,
+      [limit, offset]
+    );
 
     const reservations = result.rows.map((booking) => ({
       id: booking.id,
@@ -208,6 +249,7 @@ router.get("/hotels/reservations", async (req, res) => {
       adminEmail: booking.customer_info?.adminEmail || "",
     }));
 
+    setPaginationHeaders(res, Number(countResult.rows[0].total), page, limit);
     res.json(reservations);
   } catch (error) {
     console.error("Hotel reservations error:", error);

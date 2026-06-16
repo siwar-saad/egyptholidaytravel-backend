@@ -6,19 +6,23 @@ const { sendEmail } = require("../../services/emailService");
 
 const router = express.Router();
 
-/* ================= CLIENT HELPERS ================= */
-const ensureClientColumns = async () => {
-  await pool.query(`
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name VARCHAR(100);
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(100);
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS city VARCHAR(100);
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT '';
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT true;
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_code TEXT;
-    ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_expires TIMESTAMP WITH TIME ZONE;
-  `);
+/* ================= PAGINATION ================= */
+const getPagination = (req) => {
+  const page = Math.max(Number(req.query.page) || 1, 1);
+  const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 100);
+
+  return {
+    page,
+    limit,
+    offset: (page - 1) * limit,
+  };
+};
+
+const setPaginationHeaders = (res, total, page, limit) => {
+  res.set("X-Total-Count", String(total));
+  res.set("X-Page", String(page));
+  res.set("X-Limit", String(limit));
+  res.set("X-Total-Pages", String(Math.ceil(total / limit)));
 };
 
 const generatePassword = () => {
@@ -33,9 +37,10 @@ const generatePassword = () => {
 /* ================= ADMIN CLIENTS ================= */
 router.get("/clients", async (req, res) => {
   try {
-    await ensureClientColumns();
-
-    const result = await pool.query(`
+    const { page, limit, offset } = getPagination(req);
+    const countResult = await pool.query("SELECT COUNT(*) AS total FROM users");
+    const result = await pool.query(
+      `
       SELECT
         id,
         first_name,
@@ -49,8 +54,12 @@ router.get("/clients", async (req, res) => {
         created_at
       FROM users
       ORDER BY id DESC
-    `);
+      LIMIT $1 OFFSET $2
+      `,
+      [limit, offset]
+    );
 
+    setPaginationHeaders(res, Number(countResult.rows[0].total), page, limit);
     res.json(result.rows);
   } catch (error) {
     console.error("Get clients error:", error);
@@ -61,8 +70,6 @@ router.get("/clients", async (req, res) => {
 /* ================= CREATE CLIENT ================= */
 router.post("/clients", async (req, res) => {
   try {
-    await ensureClientColumns();
-
     const {
       firstName,
       lastName,
@@ -175,8 +182,6 @@ router.post("/clients", async (req, res) => {
 /* ================= UPDATE CLIENT ================= */
 router.put("/clients/:id", async (req, res) => {
   try {
-    await ensureClientColumns();
-
     const { id } = req.params;
     const {
       firstName,

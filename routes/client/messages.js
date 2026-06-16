@@ -43,9 +43,9 @@ router.get("/messages", authMiddleware, async (req, res) => {
 
     res.json(messages);
   } catch (err) {
+    console.error("Messages error:", err);
     res.status(500).json({
       error: "Messages error",
-      details: err.message,
     });
   }
 });
@@ -68,9 +68,9 @@ router.get("/messages/unread-count", authMiddleware, async (req, res) => {
       count: Number(result.rows[0].count),
     });
   } catch (err) {
+    console.error("Unread messages count error:", err);
     res.status(500).json({
       error: "Unread messages count error",
-      details: err.message,
     });
   }
 });
@@ -95,9 +95,9 @@ router.put("/messages/read", authMiddleware, async (req, res) => {
       readCount: result.rowCount,
     });
   } catch (err) {
+    console.error("Mark messages read error:", err);
     res.status(500).json({
       error: "Mark messages read error",
-      details: err.message,
     });
   }
 });
@@ -162,9 +162,9 @@ router.post("/messages", authMiddleware, async (req, res) => {
       }),
     });
   } catch (err) {
+    console.error("Message send error:", err);
     res.status(500).json({
       error: "Message send error",
-      details: err.message,
     });
   }
 });

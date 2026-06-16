@@ -27,9 +27,9 @@ router.get("/payments", authMiddleware, async (req, res) => {
 
     res.json(payments);
   } catch (err) {
+    console.error("Payments error:", err);
     res.status(500).json({
       error: "Payments error",
-      details: err.message,
     });
   }
 });

@@ -17,20 +17,17 @@ const reviewRoutes = require("./routes/reviews");
 
 /* ================= ENVIRONMENT CHECKS ================= */
 if (!process.env.JWT_SECRET) {
-  console.error("❌ JWT_SECRET is missing in .env");
+  console.error("JWT_SECRET is missing in .env");
   process.exit(1);
 }
 
 if (!process.env.FRONTEND_URL) {
-  console.error("❌ FRONTEND_URL is missing in .env");
+  console.error("FRONTEND_URL is missing in .env");
   process.exit(1);
 }
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-/* ================= DATABASE INITIALIZATION ================= */
-initializeDatabase();
 
 /* ================= SECURITY MIDDLEWARE ================= */
 app.use(
@@ -112,6 +109,13 @@ app.use((err, req, res, next) => {
 });
 
 /* ================= SERVER LISTENER ================= */
-app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
-});
+initializeDatabase()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  })
+  .catch((error) => {
+    console.error("Server startup failed:", error.message);
+    process.exit(1);
+  });

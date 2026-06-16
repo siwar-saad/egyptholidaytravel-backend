@@ -20,29 +20,6 @@ const parseJsonArray = (value) => {
 
 const uploadDir = path.join(__dirname, "..", "..", "public", "images", "hotels");
 
-/* ================= HOTEL HELPERS ================= */
-const ensureHotelColumns = async () => {
-  await pool.query(`
-    ALTER TABLE hotels
-      ADD COLUMN IF NOT EXISTS visibility VARCHAR(50) DEFAULT 'Published',
-      ADD COLUMN IF NOT EXISTS gallery JSONB DEFAULT '[]'::jsonb,
-      ADD COLUMN IF NOT EXISTS periods JSONB DEFAULT '[]'::jsonb,
-      ADD COLUMN IF NOT EXISTS description TEXT,
-      ADD COLUMN IF NOT EXISTS group_title VARCHAR(255),
-      ADD COLUMN IF NOT EXISTS group_subtitle TEXT,
-      ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0
-  `);
-
-  await pool.query(`
-    UPDATE hotels
-    SET
-      visibility = COALESCE(NULLIF(visibility, ''), 'Published'),
-      gallery = COALESCE(gallery, '[]'::jsonb),
-      periods = COALESCE(periods, '[]'::jsonb),
-      display_order = COALESCE(display_order, 0)
-  `);
-};
-
 const slugifyFileName = (fileName) => {
   const ext = path.extname(fileName || "").toLowerCase();
   const baseName = path
@@ -111,8 +88,6 @@ router.post("/upload-image", adminMiddleware, async (req, res) => {
 /* ================= CREATE HOTEL ================= */
 router.post("/add", adminMiddleware, async (req, res) => {
   try {
-    await ensureHotelColumns();
-
     const {
       name,
       city,
@@ -206,8 +181,6 @@ router.post("/add", adminMiddleware, async (req, res) => {
 /* ================= UPDATE HOTEL ================= */
 router.put("/:id", adminMiddleware, async (req, res) => {
   try {
-    await ensureHotelColumns();
-
     const { id } = req.params;
     const {
       name,

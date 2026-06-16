@@ -5,6 +5,34 @@ const authMiddleware = require("../../middleware/authMiddleware");
 
 const router = express.Router();
 
+/* ================= PROFILE HELPERS ================= */
+const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+
+const isSafeAvatar = (avatar) => {
+  if (!avatar) return true;
+
+  if (typeof avatar !== "string") return false;
+
+  const cleanAvatar = avatar.trim();
+
+  if (!cleanAvatar) return true;
+
+  if (/^\/images\/[a-z0-9/_-]+\.(png|jpe?g|webp)$/i.test(cleanAvatar)) {
+    return true;
+  }
+
+  const dataUrlMatch = cleanAvatar.match(
+    /^data:image\/(png|jpe?g|webp);base64,([a-z0-9+/=]+)$/i
+  );
+
+  if (!dataUrlMatch) return false;
+
+  const base64Data = dataUrlMatch[2];
+  const avatarBytes = Buffer.byteLength(base64Data, "base64");
+
+  return avatarBytes <= MAX_AVATAR_BYTES;
+};
+
 /* ================= GET PROFILE ================= */
 router.get("/profile", authMiddleware, async (req, res) => {
   try {
@@ -38,9 +66,9 @@ router.get("/profile", authMiddleware, async (req, res) => {
       role: user.role || "user",
     });
   } catch (err) {
+    console.error("Profile error:", err);
     res.status(500).json({
       error: "Profile error",
-      details: err.message,
     });
   }
 });
@@ -57,10 +85,19 @@ router.put("/profile", authMiddleware, async (req, res) => {
       city,
       country,
       avatar,
+      profileImage,
     } = req.body;
 
     const nextFirstName = firstName ?? first_name ?? req.user.first_name ?? "";
     const nextLastName = lastName ?? last_name ?? req.user.last_name ?? "";
+    const rawAvatar = avatar ?? profileImage ?? "";
+    const nextAvatar = typeof rawAvatar === "string" ? rawAvatar.trim() : "";
+
+    if (!isSafeAvatar(nextAvatar)) {
+      return res.status(400).json({
+        error: "Invalid avatar image",
+      });
+    }
 
     const result = await pool.query(
       `
@@ -81,7 +118,7 @@ router.put("/profile", authMiddleware, async (req, res) => {
         phone || "",
         city || "",
         country || "",
-        avatar || "",
+        nextAvatar,
         req.user.id,
       ]
     );
@@ -101,9 +138,9 @@ router.put("/profile", authMiddleware, async (req, res) => {
       role: user.role || "user",
     });
   } catch (err) {
+    console.error("Profile update error:", err);
     res.status(500).json({
       error: "Profile update error",
-      details: err.message,
     });
   }
 });
@@ -162,9 +199,9 @@ router.put("/change-password", authMiddleware, async (req, res) => {
       message: "Password changed successfully",
     });
   } catch (err) {
+    console.error("Password change error:", err);
     res.status(500).json({
       error: "Password change error",
-      details: err.message,
     });
   }
 });

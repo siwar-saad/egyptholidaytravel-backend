@@ -166,6 +166,9 @@ const initializeDatabase = async () => {
     /* ================= ALTER TABLES ================= */
     await pool.query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS city VARCHAR(100);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name VARCHAR(100);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(100);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
       ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT '';
       ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';
@@ -174,12 +177,17 @@ const initializeDatabase = async () => {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_expires TIMESTAMP WITH TIME ZONE;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS token_hash TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS token_expires TIMESTAMP WITH TIME ZONE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMP WITH TIME ZONE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
 
       UPDATE users
       SET email_verified = true
       WHERE email_verified = false
       AND email_verification_code IS NULL;
 
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS title VARCHAR(255);
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS programme TEXT;
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS name VARCHAR(255);
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS backend_name VARCHAR(255);
@@ -194,6 +202,22 @@ const initializeDatabase = async () => {
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS options JSONB DEFAULT '[]'::jsonb;
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS itinerary JSONB DEFAULT '[]'::jsonb;
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+
+      ALTER TABLE packages ALTER COLUMN start_price TYPE VARCHAR(100) USING start_price::text;
+      ALTER TABLE packages ALTER COLUMN price TYPE VARCHAR(100) USING price::text;
+      ALTER TABLE packages ALTER COLUMN transfer_reduction TYPE VARCHAR(255) USING transfer_reduction::text;
+
+      UPDATE packages
+      SET
+        title = COALESCE(NULLIF(title, ''), NULLIF(name, ''), 'Package'),
+        name = COALESCE(NULLIF(name, ''), NULLIF(title, ''), 'Package'),
+        backend_name = COALESCE(NULLIF(backend_name, ''), NULLIF(title, ''), NULLIF(name, ''), 'Package'),
+        visibility = COALESCE(NULLIF(visibility, ''), 'Private'),
+        options = COALESCE(options, '[]'::jsonb),
+        itinerary = COALESCE(itinerary, '[]'::jsonb),
+        display_order = COALESCE(display_order, 0),
+        created_at = COALESCE(created_at, CURRENT_TIMESTAMP);
 
       ALTER TABLE hotels ADD COLUMN IF NOT EXISTS meal VARCHAR(100);
       ALTER TABLE hotels ADD COLUMN IF NOT EXISTS image TEXT;
@@ -206,6 +230,16 @@ const initializeDatabase = async () => {
       ALTER TABLE hotels ADD COLUMN IF NOT EXISTS single_room DECIMAL(10,2);
       ALTER TABLE hotels ADD COLUMN IF NOT EXISTS double_room DECIMAL(10,2);
       ALTER TABLE hotels ADD COLUMN IF NOT EXISTS price DECIMAL(10,2);
+      ALTER TABLE hotels ADD COLUMN IF NOT EXISTS visibility VARCHAR(50) DEFAULT 'Published';
+      ALTER TABLE hotels ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+
+      UPDATE hotels
+      SET
+        visibility = COALESCE(NULLIF(visibility, ''), 'Published'),
+        gallery = COALESCE(gallery, '[]'::jsonb),
+        periods = COALESCE(periods, '[]'::jsonb),
+        display_order = COALESCE(display_order, 0),
+        created_at = COALESCE(created_at, CURRENT_TIMESTAMP);
 
       ALTER TABLE bookings ADD COLUMN IF NOT EXISTS booking_type VARCHAR(50) DEFAULT 'package';
 

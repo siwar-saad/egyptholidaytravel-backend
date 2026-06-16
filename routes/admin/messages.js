@@ -4,10 +4,32 @@ const { sendEmail } = require("../../services/emailService");
 
 const router = express.Router();
 
+/* ================= PAGINATION ================= */
+const getPagination = (req) => {
+  const page = Math.max(Number(req.query.page) || 1, 1);
+  const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 100);
+
+  return {
+    page,
+    limit,
+    offset: (page - 1) * limit,
+  };
+};
+
+const setPaginationHeaders = (res, total, page, limit) => {
+  res.set("X-Total-Count", String(total));
+  res.set("X-Page", String(page));
+  res.set("X-Limit", String(limit));
+  res.set("X-Total-Pages", String(Math.ceil(total / limit)));
+};
+
 /* ================= ADMIN MESSAGES ================= */
 router.get("/messages", async (req, res) => {
   try {
-    const result = await pool.query(`
+    const { page, limit, offset } = getPagination(req);
+    const countResult = await pool.query("SELECT COUNT(*) AS total FROM messages");
+    const result = await pool.query(
+      `
       SELECT
         m.id,
         m.name,
@@ -26,7 +48,10 @@ router.get("/messages", async (req, res) => {
       LEFT JOIN users u
         ON LOWER(u.email) = LOWER(m.email)
       ORDER BY m.created_at DESC
-    `);
+      LIMIT $1 OFFSET $2
+      `,
+      [limit, offset]
+    );
 
     const messages = result.rows.map((msg) => ({
       id: msg.id,
@@ -56,6 +81,7 @@ router.get("/messages", async (req, res) => {
         : "",
     }));
 
+    setPaginationHeaders(res, Number(countResult.rows[0].total), page, limit);
     res.json(messages);
   } catch (error) {
     console.error("Get messages error:", error);
