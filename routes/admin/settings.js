@@ -77,12 +77,36 @@ router.put("/settings/password", async (req, res) => {
   try {
     const { oldPassword, newPassword } = req.body;
 
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({
+        error: "Current password and new password are required",
+      });
+    }
+
+    if (
+      typeof newPassword !== "string" ||
+      newPassword.length < 8 ||
+      !/[a-z]/.test(newPassword) ||
+      !/[A-Z]/.test(newPassword) ||
+      !/[0-9]/.test(newPassword)
+    ) {
+      return res.status(400).json({
+        error:
+          "New password must be at least 8 characters and include uppercase, lowercase and number",
+      });
+    }
+
     const userResult = await pool.query(
       "SELECT id, password FROM users WHERE id = $1",
       [req.user.id]
     );
 
     const user = userResult.rows[0];
+
+    if (!user) {
+      return res.status(404).json({ error: "Admin account not found" });
+    }
+
     const isMatch = await bcrypt.compare(oldPassword, user.password);
 
     if (!isMatch) {

@@ -34,6 +34,10 @@ const generatePassword = () => {
   }).join("");
 };
 
+const isValidEmail = (email) => {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+};
+
 /* ================= ADMIN CLIENTS ================= */
 router.get("/clients", async (req, res) => {
   try {
@@ -86,6 +90,10 @@ router.post("/clients", async (req, res) => {
 
     if (!email) {
       return res.status(400).json({ error: "Email is required" });
+    }
+
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ error: "Invalid email format" });
     }
 
     const existing = await pool.query("SELECT id FROM users WHERE email = $1", [
@@ -197,6 +205,14 @@ router.put("/clients/:id", async (req, res) => {
     const email = req.body.email?.trim().toLowerCase();
     const nextFirstName = firstName ?? first_name ?? "";
     const nextLastName = lastName ?? last_name ?? "";
+
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ error: "Invalid email format" });
+    }
 
     const existing = await pool.query("SELECT id FROM users WHERE id = $1", [
       id,

@@ -26,6 +26,16 @@ const parseJsonArray = (value) => {
   }
 };
 
+const allowedVisibility = ["Published", "Private"];
+
+const normalizeVisibility = (visibility) => {
+  return visibility || "Private";
+};
+
+const isValidVisibility = (visibility) => {
+  return allowedVisibility.includes(normalizeVisibility(visibility));
+};
+
 const mapPackage = (row) => ({
   id: row.id,
   title: row.title || row.name || "",
@@ -157,6 +167,12 @@ router.post("/packages", async (req, res) => {
       return res.status(400).json({ error: "Package name is required" });
     }
 
+    if (!isValidVisibility(visibility)) {
+      return res.status(400).json({
+        error: "Visibility must be Published or Private",
+      });
+    }
+
     const result = await pool.query(
       `
       INSERT INTO packages
@@ -208,7 +224,7 @@ router.post("/packages", async (req, res) => {
         startPrice || start_price || price || "",
         programme || "",
         price || startPrice || start_price || "",
-        visibility || "Private",
+        normalizeVisibility(visibility),
         image || "",
         JSON.stringify(parseJsonArray(options)),
         JSON.stringify(parseJsonArray(itinerary)),
@@ -253,6 +269,12 @@ router.put("/packages/:id", async (req, res) => {
 
     if (!packageName) {
       return res.status(400).json({ error: "Package name is required" });
+    }
+
+    if (!isValidVisibility(visibility)) {
+      return res.status(400).json({
+        error: "Visibility must be Published or Private",
+      });
     }
 
     const result = await pool.query(
@@ -304,7 +326,7 @@ router.put("/packages/:id", async (req, res) => {
         startPrice || start_price || price || "",
         programme || "",
         price || startPrice || start_price || "",
-        visibility || "Private",
+        normalizeVisibility(visibility),
         image || "",
         JSON.stringify(parseJsonArray(options)),
         JSON.stringify(parseJsonArray(itinerary)),
@@ -330,6 +352,12 @@ router.put("/packages/:id/visibility", async (req, res) => {
     const { id } = req.params;
     const { visibility } = req.body;
 
+    if (!isValidVisibility(visibility)) {
+      return res.status(400).json({
+        error: "Visibility must be Published or Private",
+      });
+    }
+
     const result = await pool.query(
       `
       UPDATE packages
@@ -354,7 +382,7 @@ router.put("/packages/:id/visibility", async (req, res) => {
         display_order,
         created_at
       `,
-      [visibility || "Private", id]
+      [normalizeVisibility(visibility), id]
     );
 
     if (result.rows.length === 0) {

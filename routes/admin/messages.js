@@ -139,6 +139,8 @@ router.put("/messages/read", async (req, res) => {
 
 /* ================= REPLY TO MESSAGE ================= */
 router.put("/messages/:id/reply", async (req, res) => {
+  const client = await pool.connect();
+
   try {
     const { id } = req.params;
     const { reply } = req.body;
@@ -147,9 +149,12 @@ router.put("/messages/:id/reply", async (req, res) => {
       return res.status(400).json({ error: "Reply is required" });
     }
 
-    const originalResult = await pool.query(
+    await client.query("BEGIN");
+
+    const originalResult = await client.query(
       `
       SELECT
+        m.id,
         m.name,
         m.email,
         m.phone,
@@ -159,11 +164,13 @@ router.put("/messages/:id/reply", async (req, res) => {
       LEFT JOIN users u
         ON LOWER(u.email) = LOWER(m.email)
       WHERE m.id = $1
+      AND COALESCE(m.sender, 'client') = 'client'
       `,
       [id]
     );
 
     if (originalResult.rows.length === 0) {
+      await client.query("ROLLBACK");
       return res.status(404).json({ error: "Message not found" });
     }
 
@@ -173,7 +180,18 @@ router.put("/messages/:id/reply", async (req, res) => {
       originalMessage.name ||
       "Client";
 
-    const result = await pool.query(
+    await client.query(
+      `
+      UPDATE messages
+      SET reply = $1,
+          replied_at = CURRENT_TIMESTAMP,
+          is_read = true
+      WHERE id = $2
+      `,
+      [reply.trim(), originalMessage.id]
+    );
+
+    const result = await client.query(
       `
       INSERT INTO messages (name, email, phone, sender, is_read, message)
       VALUES ($1, $2, $3, 'admin', false, $4)
@@ -196,6 +214,8 @@ router.put("/messages/:id/reply", async (req, res) => {
         reply.trim(),
       ]
     );
+
+    await client.query("COMMIT");
 
     const message = result.rows[0];
     let emailSent = false;
@@ -232,8 +252,11 @@ router.put("/messages/:id/reply", async (req, res) => {
       data: message,
     });
   } catch (error) {
+    await client.query("ROLLBACK");
     console.error("Reply message error:", error);
     res.status(500).json({ error: "Unable to send reply" });
+  } finally {
+    client.release();
   }
 });
 

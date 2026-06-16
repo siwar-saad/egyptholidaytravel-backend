@@ -23,6 +23,7 @@ router.get("/", async (req, res) => {
         double_room,
         price
       FROM hotels
+      WHERE visibility = 'Published'
       ORDER BY COALESCE(display_order, 0), id DESC
     `);
 
