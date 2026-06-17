@@ -1,22 +1,7 @@
 const jwt = require("jsonwebtoken");
-const crypto = require("crypto");
 const pool = require("../config/database");
-
-/* ================= TOKEN HELPERS ================= */
-const hashToken = (token) =>
-  crypto.createHash("sha256").update(token).digest("hex");
-
-const getCookie = (req, name) => {
-  const cookies = req.headers.cookie || "";
-
-  return cookies
-    .split(";")
-    .map((cookie) => cookie.trim())
-    .find((cookie) => cookie.startsWith(`${name}=`))
-    ?.split("=")
-    .slice(1)
-    .join("=");
-};
+const { getCookie } = require("../utils/cookies");
+const { hashToken } = require("../utils/tokens");
 
 /* ================= AUTH MIDDLEWARE ================= */
 const authMiddleware = async (req, res, next) => {

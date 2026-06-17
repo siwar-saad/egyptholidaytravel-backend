@@ -2,6 +2,7 @@ const express = require("express");
 const fs = require("fs");
 const path = require("path");
 const pool = require("../../config/database");
+const { mapPackage, parseJsonArray } = require("../../utils/packages");
 
 const router = express.Router();
 
@@ -14,18 +15,6 @@ const ensurePackageImageDir = () => {
   }
 };
 
-const parseJsonArray = (value) => {
-  if (Array.isArray(value)) return value;
-  if (!value) return [];
-
-  try {
-    const parsed = typeof value === "string" ? JSON.parse(value) : value;
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-};
-
 const allowedVisibility = ["Published", "Private"];
 
 const normalizeVisibility = (visibility) => {
@@ -35,30 +24,6 @@ const normalizeVisibility = (visibility) => {
 const isValidVisibility = (visibility) => {
   return allowedVisibility.includes(normalizeVisibility(visibility));
 };
-
-const mapPackage = (row) => ({
-  id: row.id,
-  title: row.title || row.name || "",
-  name: row.name || row.title || "",
-  backendName: row.backend_name || row.title || row.name || "",
-  backend_name: row.backend_name || row.title || row.name || "",
-  route: row.route || "",
-  duration: row.duration || "",
-  transfer: row.transfer || "",
-  transferReduction: row.transfer_reduction || "",
-  transfer_reduction: row.transfer_reduction || "",
-  startPrice: row.start_price || row.price || "",
-  start_price: row.start_price || row.price || "",
-  programme: row.programme || "",
-  price: row.price || row.start_price || "",
-  visibility: row.visibility || "Private",
-  image: row.image || "",
-  options: row.options || [],
-  itinerary: row.itinerary || [],
-  displayOrder: row.display_order || 0,
-  display_order: row.display_order || 0,
-  created_at: row.created_at,
-});
 
 /* ================= ADMIN PACKAGES ================= */
 router.get("/packages", async (req, res) => {
@@ -86,7 +51,9 @@ router.get("/packages", async (req, res) => {
       ORDER BY display_order ASC, id DESC
     `);
 
-    res.json(result.rows.map(mapPackage));
+    res.json(
+      result.rows.map((row) => mapPackage(row, { includeAdminFields: true }))
+    );
   } catch (error) {
     console.error("Get packages error:", error);
     res.status(500).json({ error: "Unable to get packages" });
@@ -232,7 +199,9 @@ router.post("/packages", async (req, res) => {
       ]
     );
 
-    res.status(201).json(mapPackage(result.rows[0]));
+    res
+      .status(201)
+      .json(mapPackage(result.rows[0], { includeAdminFields: true }));
   } catch (error) {
     console.error("Create package error:", error);
     res.status(500).json({ error: "Unable to create package" });
@@ -339,7 +308,7 @@ router.put("/packages/:id", async (req, res) => {
       return res.status(404).json({ error: "Package not found" });
     }
 
-    res.json(mapPackage(result.rows[0]));
+    res.json(mapPackage(result.rows[0], { includeAdminFields: true }));
   } catch (error) {
     console.error("Update package error:", error);
     res.status(500).json({ error: "Unable to update package" });
@@ -389,7 +358,7 @@ router.put("/packages/:id/visibility", async (req, res) => {
       return res.status(404).json({ error: "Package not found" });
     }
 
-    res.json(mapPackage(result.rows[0]));
+    res.json(mapPackage(result.rows[0], { includeAdminFields: true }));
   } catch (error) {
     console.error("Update package visibility error:", error);
     res.status(500).json({ error: "Unable to update package visibility" });

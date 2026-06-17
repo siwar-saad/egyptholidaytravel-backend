@@ -2,7 +2,7 @@ const { Pool } = require("pg");
 require("dotenv").config();
 
 const shouldUseSsl =
-  process.env.DB_SSL === "true" || process.env.NODE_ENV === "production";
+  process.env.DB_SSL === "true" && process.env.NODE_ENV === "production";
 
 /* ================= DATABASE CONNECTION ================= */
 const pool = new Pool({

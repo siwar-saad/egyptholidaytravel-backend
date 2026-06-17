@@ -1,10 +1,11 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
-const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const pool = require("../config/database");
 const { sendEmail } = require("../services/emailService");
 const authMiddleware = require("../middleware/authMiddleware");
+const { getCookie } = require("../utils/cookies");
+const { hashToken } = require("../utils/tokens");
 
 const router = express.Router();
 
@@ -14,10 +15,6 @@ const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
   throw new Error("JWT_SECRET is missing in environment variables");
 }
-
-// Store only a hash of issued JWTs so logout can invalidate a token server-side.
-const hashToken = (token) =>
-  crypto.createHash("sha256").update(token).digest("hex");
 
 const createToken = (user, expiresIn = "1d") => {
   const token = jwt.sign(
@@ -71,18 +68,6 @@ const clearAuthCookie = (res) => {
     sameSite: "lax",
     path: "/",
   });
-};
-
-const getCookie = (req, name) => {
-  const cookies = req.headers.cookie || "";
-
-  return cookies
-    .split(";")
-    .map((cookie) => cookie.trim())
-    .find((cookie) => cookie.startsWith(`${name}=`))
-    ?.split("=")
-    .slice(1)
-    .join("=");
 };
 
 const getRequestToken = (req) => {
