@@ -20,10 +20,15 @@ router.get("/", async (req, res) => {
         start_price,
         programme,
         price,
+        country,
+        destination,
+        region,
+        force_category,
         visibility,
         image,
         options,
         itinerary,
+        included,
         display_order
       FROM packages
       WHERE visibility = 'Published'

@@ -197,10 +197,15 @@ const initializeDatabase = async () => {
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS transfer_reduction TEXT;
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS start_price VARCHAR(100);
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS price VARCHAR(100);
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT '';
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS destination VARCHAR(255) DEFAULT '';
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS region VARCHAR(100) DEFAULT '';
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS force_category VARCHAR(100) DEFAULT '';
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS pdf_status VARCHAR(50) DEFAULT 'Missing';
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS visibility VARCHAR(50) DEFAULT 'Private';
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS options JSONB DEFAULT '[]'::jsonb;
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS itinerary JSONB DEFAULT '[]'::jsonb;
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS included JSONB DEFAULT '[]'::jsonb;
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
 
@@ -216,6 +221,7 @@ const initializeDatabase = async () => {
         visibility = COALESCE(NULLIF(visibility, ''), 'Private'),
         options = COALESCE(options, '[]'::jsonb),
         itinerary = COALESCE(itinerary, '[]'::jsonb),
+        included = COALESCE(included, '[]'::jsonb),
         display_order = COALESCE(display_order, 0),
         created_at = COALESCE(created_at, CURRENT_TIMESTAMP);
 

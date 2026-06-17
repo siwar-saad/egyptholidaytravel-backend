@@ -29,8 +29,14 @@ const mapPackage = (row, options = {}) => {
     price: row.price || row.start_price || "",
     visibility: row.visibility || "Private",
     image: row.image || "",
+    country: row.country || "",
+    destination: row.destination || "",
+    region: row.region || "",
+    forceCategory: row.force_category || "",
+    force_category: row.force_category || "",
     options: row.options || [],
     itinerary: row.itinerary || [],
+    included: row.included || [],
     displayOrder: row.display_order || 0,
   };
 
