@@ -38,6 +38,42 @@ const isValidEmail = (email) => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 };
 
+const sendAccountPasswordEmail = async ({
+  email,
+  firstName,
+  role,
+  generatedPassword,
+}) => {
+  const isAdmin = role === "admin";
+  const accountType = isAdmin ? "admin" : "client";
+
+  const info = await sendEmail(
+    email,
+    `Egypt Holiday Travel - ${isAdmin ? "Admin" : "Client"} Account`,
+    `
+    <div style="font-family: Arial; padding:20px;">
+      <h2>Welcome ${firstName || (isAdmin ? "Admin" : "Client")}</h2>
+      <p>Your ${accountType} account has been created successfully.</p>
+      <p><strong>Email:</strong> ${email}</p>
+      <p><strong>Password:</strong> ${generatedPassword}</p>
+      <p>Please login and change your password after first login.</p>
+      <br/>
+      <p>Egypt Holiday Travel</p>
+    </div>
+    `
+  );
+
+  if (info.rejected?.length > 0 || info.accepted?.length === 0) {
+    throw new Error(
+      `SMTP did not accept the recipient. Accepted: ${
+        info.accepted?.join(", ") || "none"
+      }. Rejected: ${info.rejected?.join(", ") || "none"}`
+    );
+  }
+
+  return info;
+};
+
 /* ================= ADMIN CLIENTS ================= */
 router.get("/clients", async (req, res) => {
   try {
@@ -107,6 +143,7 @@ router.post("/clients", async (req, res) => {
     const generatedPassword = generatePassword();
     const hashedPassword = await bcrypt.hash(generatedPassword, 10);
     const client = await pool.connect();
+    const nextRole = role === "admin" ? "admin" : "user";
 
     try {
       await client.query("BEGIN");
@@ -145,34 +182,35 @@ router.post("/clients", async (req, res) => {
           phone || "",
           city || "",
           country || "",
-          role || "user",
+          nextRole,
           hashedPassword,
         ]
       );
 
       const user = result.rows[0];
 
-      await sendEmail(
+      const emailInfo = await sendAccountPasswordEmail({
         email,
-        "Welcome to Egypt Holiday Travel",
-        `
-        <div style="font-family: Arial; padding:20px;">
-          <h2>Welcome ${nextFirstName || "Client"}</h2>
-          <p>Your account has been created successfully.</p>
-          <p><strong>Email:</strong> ${email}</p>
-          <p><strong>Password:</strong> ${generatedPassword}</p>
-          <p>Please login and change your password after first login.</p>
-          <br/>
-          <p>Egypt Holiday Travel</p>
-        </div>
-        `
-      );
+        firstName: nextFirstName,
+        role: nextRole,
+        generatedPassword,
+      });
 
       await client.query("COMMIT");
 
       res.status(201).json({
         success: true,
-        message: "Client created successfully and email sent",
+        emailSent: true,
+        emailDelivery: {
+          messageId: emailInfo?.messageId,
+          accepted: emailInfo?.accepted || [],
+          rejected: emailInfo?.rejected || [],
+          response: emailInfo?.response,
+        },
+        message:
+          nextRole === "admin"
+            ? "Admin created successfully and password email sent"
+            : "Client created successfully and password email sent",
         user,
       });
     } catch (error) {
