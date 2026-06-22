@@ -132,15 +132,23 @@ const getEmailErrorMessage = (error) => {
     return "Email configuration is missing in Backend/.env.";
   }
 
+  if (error?.code === "EMAIL_CONFIG_MISSING" || error?.code === "EMAIL_CONFIG_INVALID") {
+    return error.message;
+  }
+
   if (error?.code === "EAUTH") {
     return "Gmail authentication failed. Check EMAIL_USER and EMAIL_PASS app password.";
+  }
+
+  if (error?.code === "EENVELOPE") {
+    return "Email sender or recipient is invalid. Check EMAIL_FROM and the recipient email.";
   }
 
   if (error?.code === "ECONNECTION" || error?.code === "ETIMEDOUT") {
     return "Cannot connect to the email server. Check EMAIL_HOST, EMAIL_PORT and EMAIL_SECURE.";
   }
 
-  return error?.message || "Unknown email sending error.";
+  return error?.response || error?.message || "Unknown email sending error.";
 };
 
 const loginAttempts = new Map();
@@ -492,8 +500,6 @@ router.post("/verify-signup-code", async (req, res) => {
 
     res.json({
       success: true,
-      token: tokenData.token,
-      tokenExpires: tokenData.tokenExpires,
       user: cleanUser({ ...user, email_verified: true }),
     });
   } catch (error) {
@@ -660,8 +666,6 @@ router.post("/login", async (req, res) => {
 
     res.json({
       success: true,
-      token: tokenData.token,
-      tokenExpires: tokenData.tokenExpires,
       user: cleanUser(user),
     });
   } catch (error) {
@@ -851,8 +855,6 @@ router.post("/reset-password", async (req, res) => {
     res.json({
       success: true,
       message: "Password reset successfully",
-      token: tokenData.token,
-      tokenExpires: tokenData.tokenExpires,
       user: cleanUser(user),
     });
   } catch (error) {

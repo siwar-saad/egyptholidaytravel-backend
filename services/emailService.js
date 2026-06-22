@@ -1,21 +1,62 @@
 require("dotenv").config();
 const nodemailer = require("nodemailer");
 
-/* ================= EMAIL TRANSPORT ================= */
-const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: Number(process.env.EMAIL_PORT),
-  secure: process.env.EMAIL_SECURE === "true",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+/* ================= EMAIL CONFIG ================= */
+const cleanEnv = (value = "") => String(value).trim().replace(/^"|"$/g, "");
+
+const getEmailConfig = () => {
+  const host = cleanEnv(process.env.EMAIL_HOST);
+  const port = Number(cleanEnv(process.env.EMAIL_PORT));
+  const secure = cleanEnv(process.env.EMAIL_SECURE) === "true";
+  const user = cleanEnv(process.env.EMAIL_USER);
+  const pass = cleanEnv(process.env.EMAIL_PASS).replace(/\s+/g, "");
+  const from = cleanEnv(process.env.EMAIL_FROM) || `Egypt Holiday <${user}>`;
+
+  if (!host || !port || !user || !pass) {
+    const error = new Error("Email configuration is missing in Backend/.env.");
+    error.code = "EMAIL_CONFIG_MISSING";
+    throw error;
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user)) {
+    const error = new Error(
+      "EMAIL_USER must be a full email address, for example name@gmail.com."
+    );
+    error.code = "EMAIL_CONFIG_INVALID";
+    throw error;
+  }
+
+  return {
+    host,
+    port,
+    secure,
+    user,
+    pass,
+    from,
+  };
+};
+
+const createTransporter = () => {
+  const config = getEmailConfig();
+
+  return nodemailer.createTransport({
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    auth: {
+      user: config.user,
+      pass: config.pass,
+    },
+  });
+};
 
 /* ================= SEND EMAIL ================= */
 const sendEmail = async (to, subject, html) => {
+  const config = getEmailConfig();
+  const transporter = createTransporter();
+
   const info = await transporter.sendMail({
-    from: process.env.EMAIL_FROM,
+    from: config.from,
     to,
     subject,
     html,
