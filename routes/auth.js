@@ -500,6 +500,8 @@ router.post("/verify-signup-code", async (req, res) => {
 
     res.json({
       success: true,
+      token: tokenData.token,
+      tokenExpires: tokenData.tokenExpires,
       user: cleanUser({ ...user, email_verified: true }),
     });
   } catch (error) {
@@ -666,6 +668,8 @@ router.post("/login", async (req, res) => {
 
     res.json({
       success: true,
+      token: tokenData.token,
+      tokenExpires: tokenData.tokenExpires,
       user: cleanUser(user),
     });
   } catch (error) {
@@ -855,6 +859,8 @@ router.post("/reset-password", async (req, res) => {
     res.json({
       success: true,
       message: "Password reset successfully",
+      token: tokenData.token,
+      tokenExpires: tokenData.tokenExpires,
       user: cleanUser(user),
     });
   } catch (error) {
