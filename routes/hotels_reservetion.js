@@ -13,7 +13,7 @@ const buildCustomerInfo = (customerInfo = {}, user = {}) => ({
     customerInfo.full_name ||
     `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
     "",
-  email: user.email,
+  email: String(user.email || "").trim().toLowerCase(),
 });
 
 const extractAmount = (value) => {

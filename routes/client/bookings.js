@@ -12,7 +12,7 @@ const buildCustomerInfo = (customerInfo = {}, user = {}) => ({
     customerInfo.full_name ||
     `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
     "",
-  email: user.email,
+  email: String(user.email || "").trim().toLowerCase(),
 });
 
 const extractAmount = (value) => {
@@ -196,10 +196,10 @@ router.get(["/mybookings"], authMiddleware, async (req, res) => {
         total_price,
         created_at
       FROM bookings
-      WHERE customer_info->>'email' = $1
+      WHERE LOWER(customer_info->>'email') = LOWER($1)
       ORDER BY created_at DESC
       `,
-      [req.user.email]
+      [String(req.user.email || "").trim().toLowerCase()]
     );
 
     const bookings = result.rows.map(mapClientBooking);

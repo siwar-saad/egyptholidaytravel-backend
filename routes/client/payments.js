@@ -11,10 +11,10 @@ router.get("/payments", authMiddleware, async (req, res) => {
       `
       SELECT id, total_price, status, created_at
       FROM bookings
-      WHERE customer_info->>'email' = $1
+      WHERE LOWER(customer_info->>'email') = LOWER($1)
       ORDER BY created_at DESC
       `,
-      [req.user.email]
+      [String(req.user.email || "").trim().toLowerCase()]
     );
 
     const payments = result.rows.map((payment) => ({
