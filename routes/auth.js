@@ -6,6 +6,7 @@ const { sendEmail } = require("../services/emailService");
 const authMiddleware = require("../middleware/authMiddleware");
 const { getCookie } = require("../utils/cookies");
 const { hashToken } = require("../utils/tokens");
+const { validatePasswordStrength } = require("../utils/passwordPolicy");
 
 const router = express.Router();
 
@@ -311,6 +312,14 @@ router.post("/signup", async (req, res) => {
     if (password !== confirmPassword) {
       return res.status(400).json({
         error: "Passwords do not match",
+      });
+    }
+
+    const passwordStrength = validatePasswordStrength(password);
+
+    if (!passwordStrength.valid) {
+      return res.status(400).json({
+        error: passwordStrength.error,
       });
     }
 
@@ -798,6 +807,14 @@ router.post("/reset-password", async (req, res) => {
     if (!email || !code || !newPassword) {
       return res.status(400).json({
         error: "Email, code and new password are required",
+      });
+    }
+
+    const passwordStrength = validatePasswordStrength(newPassword);
+
+    if (!passwordStrength.valid) {
+      return res.status(400).json({
+        error: passwordStrength.error,
       });
     }
 

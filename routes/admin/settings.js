@@ -1,6 +1,7 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const pool = require("../../config/database");
+const { validatePasswordStrength } = require("../../utils/passwordPolicy");
 
 const router = express.Router();
 
@@ -83,16 +84,11 @@ router.put("/settings/password", async (req, res) => {
       });
     }
 
-    if (
-      typeof newPassword !== "string" ||
-      newPassword.length < 8 ||
-      !/[a-z]/.test(newPassword) ||
-      !/[A-Z]/.test(newPassword) ||
-      !/[0-9]/.test(newPassword)
-    ) {
+    const passwordStrength = validatePasswordStrength(newPassword);
+
+    if (!passwordStrength.valid) {
       return res.status(400).json({
-        error:
-          "New password must be at least 8 characters and include uppercase, lowercase and number",
+        error: passwordStrength.error,
       });
     }
 

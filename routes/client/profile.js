@@ -2,6 +2,7 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const pool = require("../../config/database");
 const authMiddleware = require("../../middleware/authMiddleware");
+const { validatePasswordStrength } = require("../../utils/passwordPolicy");
 
 const router = express.Router();
 
@@ -153,6 +154,14 @@ router.put("/change-password", authMiddleware, async (req, res) => {
     if (!currentPassword || !newPassword) {
       return res.status(400).json({
         error: "All password fields are required",
+      });
+    }
+
+    const passwordStrength = validatePasswordStrength(newPassword);
+
+    if (!passwordStrength.valid) {
+      return res.status(400).json({
+        error: passwordStrength.error,
       });
     }
 
