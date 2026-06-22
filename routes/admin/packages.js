@@ -1,5 +1,5 @@
 const express = require("express");
-const fs = require("fs");
+const fs = require("fs/promises");
 const path = require("path");
 const pool = require("../../config/database");
 const { mapPackage, parseJsonArray } = require("../../utils/packages");
@@ -9,10 +9,8 @@ const router = express.Router();
 const packageImageDir = path.join(__dirname, "../../public/images/packages");
 
 /* ================= PACKAGE HELPERS ================= */
-const ensurePackageImageDir = () => {
-  if (!fs.existsSync(packageImageDir)) {
-    fs.mkdirSync(packageImageDir, { recursive: true });
-  }
+const ensurePackageImageDir = async () => {
+  await fs.mkdir(packageImageDir, { recursive: true });
 };
 
 const allowedVisibility = ["Published", "Private"];
@@ -74,7 +72,7 @@ router.post("/packages/upload-image", async (req, res) => {
       return res.status(400).json({ error: "Valid image is required" });
     }
 
-    ensurePackageImageDir();
+    await ensurePackageImageDir();
 
     const match = image.match(/^data:image\/(png|jpe?g|webp);base64,(.+)$/i);
 
@@ -97,7 +95,7 @@ router.post("/packages/upload-image", async (req, res) => {
     )}.${extension}`;
     const filePath = path.join(packageImageDir, filename);
 
-    fs.writeFileSync(filePath, imageBuffer);
+    await fs.writeFile(filePath, imageBuffer);
 
     res.status(201).json({
       image: `/images/packages/${filename}`,

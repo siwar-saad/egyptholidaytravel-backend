@@ -4,17 +4,46 @@ const authMiddleware = require("../../middleware/authMiddleware");
 
 const router = express.Router();
 
+const getPagination = (req) => {
+  const page = Math.max(Number(req.query.page) || 1, 1);
+  const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 100);
+
+  return {
+    page,
+    limit,
+    offset: (page - 1) * limit,
+  };
+};
+
+const setPaginationHeaders = (res, total, page, limit) => {
+  res.set("X-Total-Count", String(total));
+  res.set("X-Page", String(page));
+  res.set("X-Limit", String(limit));
+};
+
 /* ================= GET MESSAGES ================= */
 router.get("/messages", authMiddleware, async (req, res) => {
   try {
+    const { page, limit, offset } = getPagination(req);
+    const email = String(req.user.email || "").trim().toLowerCase();
+    const countResult = await pool.query(
+      `
+      SELECT COUNT(*) AS total
+      FROM messages
+      WHERE LOWER(email) = LOWER($1)
+      `,
+      [email]
+    );
+
     const result = await pool.query(
       `
       SELECT id, name, email, phone, sender, is_read, message, reply, replied_at, created_at
       FROM messages
-      WHERE email = $1
+      WHERE LOWER(email) = LOWER($1)
       ORDER BY created_at DESC
+      LIMIT $2 OFFSET $3
       `,
-      [req.user.email]
+      [email, limit, offset]
     );
 
     const messages = result.rows.map((msg) => ({
@@ -41,6 +70,7 @@ router.get("/messages", authMiddleware, async (req, res) => {
       }),
     }));
 
+    setPaginationHeaders(res, Number(countResult.rows[0].total), page, limit);
     res.json(messages);
   } catch (err) {
     console.error("Messages error:", err);
