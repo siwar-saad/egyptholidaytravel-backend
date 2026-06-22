@@ -15,6 +15,56 @@ const buildCustomerInfo = (customerInfo = {}, user = {}) => ({
   email: user.email,
 });
 
+const extractAmount = (value) => {
+  if (value === null || value === undefined) return 0;
+
+  const match = String(value).replace(/,/g, "").match(/\d+(\.\d+)?/);
+  return match ? Number(match[0]) : 0;
+};
+
+const getPackageServerPrice = async (searchParams = {}) => {
+  const packageId = searchParams.packageId || searchParams.package_id || searchParams.id;
+  const packageName =
+    searchParams.name ||
+    searchParams.title ||
+    searchParams.backendName ||
+    searchParams.backend_name ||
+    searchParams.route ||
+    "";
+
+  let result;
+
+  if (packageId) {
+    result = await pool.query(
+      `
+      SELECT start_price, price
+      FROM packages
+      WHERE id = $1
+      LIMIT 1
+      `,
+      [packageId]
+    );
+  } else if (packageName) {
+    result = await pool.query(
+      `
+      SELECT start_price, price
+      FROM packages
+      WHERE LOWER(name) = LOWER($1)
+         OR LOWER(title) = LOWER($1)
+         OR LOWER(backend_name) = LOWER($1)
+         OR LOWER(route) = LOWER($1)
+      LIMIT 1
+      `,
+      [packageName]
+    );
+  }
+
+  const packageData = result?.rows?.[0];
+  if (!packageData) return null;
+
+  return extractAmount(packageData.start_price || packageData.price);
+};
+
 router.post("/bookings", authMiddleware, async (req, res) => {
   try {
     const {
@@ -22,12 +72,21 @@ router.post("/bookings", authMiddleware, async (req, res) => {
       search_params,
       selected_hotel,
       selected_activities,
-      total_price,
       customer_info,
       booking_type,
     } = req.body;
 
     const normalizedCustomerInfo = buildCustomerInfo(customer_info, req.user);
+    const serverTotalPrice =
+      (booking_type || "package") === "package"
+        ? await getPackageServerPrice(search_params || {})
+        : 0;
+
+    if ((booking_type || "package") === "package" && serverTotalPrice === null) {
+      return res.status(400).json({
+        error: "Selected package was not found",
+      });
+    }
 
     const result = await pool.query(
       `
@@ -59,7 +118,7 @@ router.post("/bookings", authMiddleware, async (req, res) => {
         search_params || {},
         selected_hotel || null,
         selected_activities || null,
-        total_price || 0,
+        serverTotalPrice,
         normalizedCustomerInfo,
         booking_type || "package",
       ]

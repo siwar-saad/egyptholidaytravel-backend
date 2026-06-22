@@ -16,6 +16,76 @@ const buildCustomerInfo = (customerInfo = {}, user = {}) => ({
   email: user.email,
 });
 
+const extractAmount = (value) => {
+  if (value === null || value === undefined) return 0;
+
+  const match = String(value).replace(/,/g, "").match(/\d+(\.\d+)?/);
+  return match ? Number(match[0]) : 0;
+};
+
+const getPeriodPrice = (periods, roomType) => {
+  const period = Array.isArray(periods) ? periods[0] : null;
+  if (!period) return 0;
+
+  const normalizedRoom = String(roomType || "").toLowerCase();
+
+  if (normalizedRoom.includes("double")) return extractAmount(period.double);
+  if (normalizedRoom.includes("triple")) return extractAmount(period.triple);
+
+  return extractAmount(period.single);
+};
+
+const getHotelServerPrice = async (hotelData = {}) => {
+  const hotelId = hotelData.id || hotelData.hotelId || hotelData.hotel_id;
+  const hotelName = hotelData.name || hotelData.hotelName || "";
+  const hotelCity = hotelData.city || "";
+
+  let result;
+
+  if (hotelId) {
+    result = await pool.query(
+      `
+      SELECT single_room, double_room, price, periods
+      FROM hotels
+      WHERE id = $1
+      LIMIT 1
+      `,
+      [hotelId]
+    );
+  } else if (hotelName) {
+    result = await pool.query(
+      `
+      SELECT single_room, double_room, price, periods
+      FROM hotels
+      WHERE LOWER(name) = LOWER($1)
+        AND ($2 = '' OR LOWER(city) = LOWER($2))
+      LIMIT 1
+      `,
+      [hotelName, hotelCity]
+    );
+  }
+
+  const hotel = result?.rows?.[0];
+  if (!hotel) return null;
+
+  const roomType = hotelData.roomType || hotelData.room_type || "";
+  const normalizedRoom = String(roomType).toLowerCase();
+
+  if (normalizedRoom.includes("double")) {
+    return (
+      extractAmount(hotel?.double_room) ||
+      getPeriodPrice(hotel?.periods, roomType) ||
+      extractAmount(hotel?.price)
+    );
+  }
+
+  return (
+    extractAmount(hotel?.single_room) ||
+    getPeriodPrice(hotel?.periods, roomType) ||
+    extractAmount(hotel?.price)
+  );
+};
+
 /* ================= HOTEL BOOKING HELPERS ================= */
 const allowedBookingStatuses = ["Pending", "Confirmed", "Cancelled"];
 
@@ -27,8 +97,6 @@ router.post("/reserve", authMiddleware, async (req, res) => {
       hotel,
       customer_info,
       customerInfo,
-      total_price,
-      totalPrice,
       search_params,
     } = req.body;
     const hotelData = selected_hotel || hotel || {};
@@ -36,6 +104,13 @@ router.post("/reserve", authMiddleware, async (req, res) => {
 
     const bookingReference = `HOTEL-${Date.now()}`;
     const normalizedCustomerInfo = buildCustomerInfo(customerData, req.user);
+    const serverTotalPrice = await getHotelServerPrice(hotelData);
+
+    if (serverTotalPrice === null) {
+      return res.status(400).json({
+        error: "Selected hotel was not found",
+      });
+    }
 
     const result = await pool.query(
       `
@@ -66,7 +141,7 @@ router.post("/reserve", authMiddleware, async (req, res) => {
         "hotel",
         hotelData,
         normalizedCustomerInfo,
-        total_price || totalPrice || 0,
+        serverTotalPrice,
         search_params || {},
         "Pending",
       ]
