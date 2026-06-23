@@ -1,29 +1,15 @@
 const express = require("express");
 const pool = require("../../config/database");
 const adminMiddleware = require("../../middleware/adminMiddleware");
+const {
+  getPagination,
+  setPaginationHeaders,
+} = require("../../utils/pagination");
 
 const router = express.Router();
 const allowedStatuses = ["public", "private"];
 
 /* ================= REVIEW HELPERS ================= */
-const getPagination = (req) => {
-  const page = Math.max(Number(req.query.page) || 1, 1);
-  const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 100);
-
-  return {
-    page,
-    limit,
-    offset: (page - 1) * limit,
-  };
-};
-
-const setPaginationHeaders = (res, total, page, limit) => {
-  res.set("X-Total-Count", String(total));
-  res.set("X-Page", String(page));
-  res.set("X-Limit", String(limit));
-  res.set("X-Total-Pages", String(Math.ceil(total / limit)));
-};
-
 const mapReview = (review) => ({
   id: review.id,
   _id: review.id,

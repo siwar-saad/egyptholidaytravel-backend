@@ -201,11 +201,27 @@ const initializeDatabase = async () => {
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS destination VARCHAR(255) DEFAULT '';
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS region VARCHAR(100) DEFAULT '';
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS force_category VARCHAR(100) DEFAULT '';
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS hide_price BOOLEAN DEFAULT false;
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS card_title VARCHAR(255) DEFAULT '';
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS card_subtitle VARCHAR(255) DEFAULT '';
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS badge_text VARCHAR(255) DEFAULT '';
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS hotel_name VARCHAR(255) DEFAULT '';
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS hotel_meal VARCHAR(255) DEFAULT '';
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS hotel_nights VARCHAR(100) DEFAULT '';
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS sgl_price VARCHAR(100) DEFAULT '';
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS dbl_price VARCHAR(100) DEFAULT '';
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS tpl_price VARCHAR(100) DEFAULT '';
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS package_group_id VARCHAR(255) DEFAULT '';
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS package_group_title VARCHAR(255) DEFAULT '';
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS package_group_subtitle VARCHAR(255) DEFAULT '';
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS package_group_short_title VARCHAR(255) DEFAULT '';
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS pdf_status VARCHAR(50) DEFAULT 'Missing';
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS visibility VARCHAR(50) DEFAULT 'Private';
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS options JSONB DEFAULT '[]'::jsonb;
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS itinerary JSONB DEFAULT '[]'::jsonb;
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS included JSONB DEFAULT '[]'::jsonb;
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS excluded JSONB DEFAULT '[]'::jsonb;
+      ALTER TABLE packages ADD COLUMN IF NOT EXISTS flight_details JSONB DEFAULT '[]'::jsonb;
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
 

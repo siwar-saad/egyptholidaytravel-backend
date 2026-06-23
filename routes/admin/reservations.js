@@ -1,14 +1,12 @@
 const express = require("express");
 const pool = require("../../config/database");
+const {
+  getPagination,
+  setPaginationHeaders,
+} = require("../../utils/pagination");
+const { getCustomerName } = require("../../utils/customer");
 
 const router = express.Router();
-
-const getCustomerName = (customerInfo = {}) =>
-  customerInfo?.fullName ||
-  customerInfo?.name ||
-  customerInfo?.full_name ||
-  customerInfo?.email ||
-  "Client";
 
 const getAdminName = (req) =>
   `${req.user?.first_name || ""} ${req.user?.last_name || ""}`.trim() ||
@@ -16,25 +14,6 @@ const getAdminName = (req) =>
   "Admin";
 
 const allowedBookingStatuses = ["Pending", "Confirmed", "Cancelled"];
-
-/* ================= PAGINATION ================= */
-const getPagination = (req) => {
-  const page = Math.max(Number(req.query.page) || 1, 1);
-  const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 100);
-
-  return {
-    page,
-    limit,
-    offset: (page - 1) * limit,
-  };
-};
-
-const setPaginationHeaders = (res, total, page, limit) => {
-  res.set("X-Total-Count", String(total));
-  res.set("X-Page", String(page));
-  res.set("X-Limit", String(limit));
-  res.set("X-Total-Pages", String(Math.ceil(total / limit)));
-};
 
 /* ================= PACKAGE RESERVATIONS ================= */
 router.get("/reservations", async (req, res) => {

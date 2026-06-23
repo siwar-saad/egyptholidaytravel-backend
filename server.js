@@ -99,6 +99,14 @@ app.get("/api/health", async (req, res) => {
   }
 });
 
+/* ================= API 404 HANDLER ================= */
+app.use("/api", (req, res) => {
+  res.status(404).json({
+    error: "API route not found",
+    path: req.originalUrl,
+  });
+});
+
 /* ================= GLOBAL ERROR HANDLER ================= */
 app.use((err, req, res, next) => {
   console.error("Global error:", err);

@@ -3,27 +3,12 @@ const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const pool = require("../../config/database");
 const { sendEmail } = require("../../services/emailService");
+const {
+  getPagination,
+  setPaginationHeaders,
+} = require("../../utils/pagination");
 
 const router = express.Router();
-
-/* ================= PAGINATION ================= */
-const getPagination = (req) => {
-  const page = Math.max(Number(req.query.page) || 1, 1);
-  const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 100);
-
-  return {
-    page,
-    limit,
-    offset: (page - 1) * limit,
-  };
-};
-
-const setPaginationHeaders = (res, total, page, limit) => {
-  res.set("X-Total-Count", String(total));
-  res.set("X-Page", String(page));
-  res.set("X-Limit", String(limit));
-  res.set("X-Total-Pages", String(Math.ceil(total / limit)));
-};
 
 const generatePassword = () => {
   const alphabet =

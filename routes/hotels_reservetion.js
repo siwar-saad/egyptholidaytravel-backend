@@ -4,17 +4,7 @@ const pool = require("../config/database");
 
 const adminMiddleware = require("../middleware/adminMiddleware");
 const authMiddleware = require("../middleware/authMiddleware");
-
-const buildCustomerInfo = (customerInfo = {}, user = {}) => ({
-  ...customerInfo,
-  name:
-    customerInfo.name ||
-    customerInfo.fullName ||
-    customerInfo.full_name ||
-    `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
-    "",
-  email: String(user.email || "").trim().toLowerCase(),
-});
+const { buildCustomerInfo } = require("../utils/customer");
 
 const extractAmount = (value) => {
   if (value === null || value === undefined) return 0;

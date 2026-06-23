@@ -3,20 +3,9 @@ const fs = require("fs/promises");
 const path = require("path");
 const pool = require("../../config/database");
 const adminMiddleware = require("../../middleware/adminMiddleware");
+const { parseJsonArray } = require("../../utils/packages");
 
 const router = express.Router();
-
-const parseJsonArray = (value) => {
-  if (Array.isArray(value)) return value;
-  if (!value) return [];
-
-  try {
-    const parsed = typeof value === "string" ? JSON.parse(value) : value;
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-};
 
 const uploadDir = path.join(__dirname, "..", "..", "public", "images", "hotels");
 

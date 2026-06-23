@@ -1,36 +1,13 @@
 const express = require("express");
 const pool = require("../../config/database");
 const authMiddleware = require("../../middleware/authMiddleware");
+const {
+  getPagination,
+  setPaginationHeaders,
+} = require("../../utils/pagination");
+const { buildCustomerInfo } = require("../../utils/customer");
 
 const router = express.Router();
-
-const getPagination = (req) => {
-  const page = Math.max(Number(req.query.page) || 1, 1);
-  const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
-
-  return {
-    page,
-    limit,
-    offset: (page - 1) * limit,
-  };
-};
-
-const setPaginationHeaders = (res, total, page, limit) => {
-  res.set("X-Total-Count", String(total));
-  res.set("X-Page", String(page));
-  res.set("X-Limit", String(limit));
-};
-
-const buildCustomerInfo = (customerInfo = {}, user = {}) => ({
-  ...customerInfo,
-  name:
-    customerInfo.name ||
-    customerInfo.fullName ||
-    customerInfo.full_name ||
-    `${user.first_name || ""} ${user.last_name || ""}`.trim() ||
-    "",
-  email: String(user.email || "").trim().toLowerCase(),
-});
 
 const extractAmount = (value) => {
   if (value === null || value === undefined) return 0;
@@ -200,7 +177,7 @@ const mapClientBooking = (booking) => ({
 /* ================= BOOKINGS ================= */
 router.get(["/mybookings"], authMiddleware, async (req, res) => {
   try {
-    const { page, limit, offset } = getPagination(req);
+    const { page, limit, offset } = getPagination(req, { defaultLimit: 20 });
     const email = String(req.user.email || "").trim().toLowerCase();
     const countResult = await pool.query(
       `

@@ -23,33 +23,52 @@ const isValidVisibility = (visibility) => {
   return allowedVisibility.includes(normalizeVisibility(visibility));
 };
 
+const packageSelectFields = `
+  id,
+  title,
+  name,
+  backend_name,
+  route,
+  duration,
+  transfer,
+  transfer_reduction,
+  start_price,
+  programme,
+  price,
+  country,
+  destination,
+  region,
+  force_category,
+  hide_price,
+  card_title,
+  card_subtitle,
+  badge_text,
+  hotel_name,
+  hotel_meal,
+  hotel_nights,
+  sgl_price,
+  dbl_price,
+  tpl_price,
+  package_group_id,
+  package_group_title,
+  package_group_subtitle,
+  package_group_short_title,
+  visibility,
+  image,
+  options,
+  itinerary,
+  included,
+  excluded,
+  flight_details,
+  display_order,
+  created_at
+`;
+
 /* ================= ADMIN PACKAGES ================= */
 router.get("/packages", async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT
-        id,
-        title,
-        name,
-        backend_name,
-        route,
-        duration,
-        transfer,
-        transfer_reduction,
-        start_price,
-        programme,
-        price,
-        country,
-        destination,
-        region,
-        force_category,
-        visibility,
-        image,
-        options,
-        itinerary,
-        included,
-        display_order,
-        created_at
+      SELECT ${packageSelectFields}
       FROM packages
       ORDER BY display_order ASC, id DESC
     `);
@@ -164,29 +183,7 @@ router.post("/packages", async (req, res) => {
         display_order
       )
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb,$14::jsonb,$15)
-      RETURNING
-        id,
-        title,
-        name,
-        backend_name,
-        route,
-        duration,
-        transfer,
-        transfer_reduction,
-        start_price,
-        programme,
-        price,
-        country,
-        destination,
-        region,
-        force_category,
-        visibility,
-        image,
-        options,
-        itinerary,
-        included,
-        display_order,
-        created_at
+      RETURNING ${packageSelectFields}
       `,
       [
         packageName,
@@ -273,29 +270,7 @@ router.put("/packages/:id", async (req, res) => {
           itinerary = $14::jsonb,
           display_order = $15
       WHERE id = $16
-      RETURNING
-        id,
-        title,
-        name,
-        backend_name,
-        route,
-        duration,
-        transfer,
-        transfer_reduction,
-        start_price,
-        programme,
-        price,
-        country,
-        destination,
-        region,
-        force_category,
-        visibility,
-        image,
-        options,
-        itinerary,
-        included,
-        display_order,
-        created_at
+      RETURNING ${packageSelectFields}
       `,
       [
         packageName,
@@ -345,29 +320,7 @@ router.put("/packages/:id/visibility", async (req, res) => {
       UPDATE packages
       SET visibility = $1
       WHERE id = $2
-      RETURNING
-        id,
-        title,
-        name,
-        backend_name,
-        route,
-        duration,
-        transfer,
-        transfer_reduction,
-        start_price,
-        programme,
-        price,
-        country,
-        destination,
-        region,
-        force_category,
-        visibility,
-        image,
-        options,
-        itinerary,
-        included,
-        display_order,
-        created_at
+      RETURNING ${packageSelectFields}
       `,
       [normalizeVisibility(visibility), id]
     );
