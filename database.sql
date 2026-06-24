@@ -1,4 +1,4 @@
---
+﻿--
 -- PostgreSQL database dump
 --
 
@@ -224,6 +224,8 @@ CREATE TABLE public.users (
     reset_token text,
     reset_token_expires timestamp with time zone,
     role character varying(50) DEFAULT 'user'::character varying,
+    admin_type character varying(30),
+    permissions jsonb DEFAULT '[]'::jsonb,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP
 );
@@ -550,4 +552,5 @@ ALTER TABLE ONLY public.password_resets
 --
 -- PostgreSQL database dump complete
 --
+
 

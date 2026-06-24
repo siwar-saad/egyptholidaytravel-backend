@@ -1,4 +1,4 @@
-const bcrypt = require("bcryptjs");
+﻿const bcrypt = require("bcryptjs");
 const pool = require("./config/database");
 
 /* ================= SEED ADMIN ================= */
@@ -21,15 +21,17 @@ const seedAdmin = async () => {
       [email, hashedPassword, "Admin", "EgyptHoliday", "admin"]
     );
 
-    console.log("✅ Admin created successfully");
+    console.log("\u2705 Admin created successfully");
     console.log("Email: admin@gmail.com");
     console.log("Password: admin123");
 
     process.exit();
   } catch (error) {
-    console.error("❌ Seed admin error:", error.message);
+    console.error("âŒ Seed admin error:", error.message);
     process.exit(1);
   }
 };
 
 seedAdmin();
+
+

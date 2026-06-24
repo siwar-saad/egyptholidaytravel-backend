@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 const pool = require("../../config/database");
 
 const router = express.Router();
@@ -9,7 +9,11 @@ router.get("/dashboard", async (req, res) => {
     const packagesCount = await pool.query("SELECT COUNT(*) FROM packages");
     const reservationsCount = await pool.query("SELECT COUNT(*) FROM bookings");
     const clientsCount = await pool.query("SELECT COUNT(*) FROM users");
-    const messagesCount = await pool.query("SELECT COUNT(*) FROM messages");
+    const messagesCount = await pool.query(`
+      SELECT COUNT(DISTINCT LOWER(TRIM(email)))
+      FROM messages
+      WHERE NULLIF(TRIM(email), '') IS NOT NULL
+    `);
 
     res.json({
       packages: Number(packagesCount.rows[0].count),
@@ -24,3 +28,4 @@ router.get("/dashboard", async (req, res) => {
 });
 
 module.exports = router;
+

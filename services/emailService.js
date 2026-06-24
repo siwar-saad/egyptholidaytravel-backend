@@ -10,7 +10,11 @@ const getEmailConfig = () => {
   const secure = cleanEnv(process.env.EMAIL_SECURE) === "true";
   const user = cleanEnv(process.env.EMAIL_USER);
   const pass = cleanEnv(process.env.EMAIL_PASS).replace(/\s+/g, "");
-  const from = cleanEnv(process.env.EMAIL_FROM) || `Egypt Holiday <${user}>`;
+    let from = cleanEnv(process.env.EMAIL_FROM) || `Egypt Holiday <${user}>`;
+
+  if (host === "smtp.gmail.com" && !from.includes(user)) {
+    from = `Egypt Holiday Travel <${user}>`;
+  }
 
   if (!host || !port || !user || !pass) {
     const error = new Error("Email configuration is missing in Backend/.env.");
@@ -47,6 +51,9 @@ const createTransporter = () => {
       user: config.user,
       pass: config.pass,
     },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
   });
 };
 

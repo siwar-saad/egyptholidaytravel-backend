@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 const pool = require("../../config/database");
 const adminMiddleware = require("../../middleware/adminMiddleware");
 const {
@@ -17,6 +17,10 @@ const mapReview = (review) => ({
   rating: review.rating,
   text: review.text,
   comment: review.text,
+  country: review.country || '',
+  code: review.country_code || '',
+  countryCode: review.country_code || '',
+  verified: Boolean(review.verified),
   status: review.status || "private",
   createdAt: review.created_at,
 });
@@ -28,7 +32,7 @@ router.get("/reviews/all", adminMiddleware, async (req, res) => {
     const countResult = await pool.query("SELECT COUNT(*) AS total FROM reviews");
     const result = await pool.query(
       `
-      SELECT id, name, rating, text, status, created_at
+      SELECT id, name, rating, text, country, country_code, verified, status, created_at
       FROM reviews
       ORDER BY created_at DESC, id DESC
       LIMIT $1 OFFSET $2
@@ -59,7 +63,7 @@ router.put("/reviews/:id/status", adminMiddleware, async (req, res) => {
       UPDATE reviews
       SET status = $1
       WHERE id = $2
-      RETURNING id, name, rating, text, status, created_at
+      RETURNING id, name, rating, text, country, country_code, verified, status, created_at
       `,
       [status, id]
     );
@@ -104,3 +108,4 @@ router.delete("/reviews/:id", adminMiddleware, async (req, res) => {
 });
 
 module.exports = router;
+

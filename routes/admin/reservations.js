@@ -1,10 +1,11 @@
-const express = require("express");
+﻿const express = require("express");
 const pool = require("../../config/database");
 const {
   getPagination,
   setPaginationHeaders,
 } = require("../../utils/pagination");
 const { getCustomerName } = require("../../utils/customer");
+const { requireAdminPermission } = require("../../middleware/adminMiddleware");
 
 const router = express.Router();
 
@@ -16,7 +17,7 @@ const getAdminName = (req) =>
 const allowedBookingStatuses = ["Pending", "Confirmed", "Cancelled"];
 
 /* ================= PACKAGE RESERVATIONS ================= */
-router.get("/reservations", async (req, res) => {
+router.get("/reservations", requireAdminPermission("reservations"), async (req, res) => {
   try {
     const { page, limit, offset } = getPagination(req);
     const countResult = await pool.query(`
@@ -56,7 +57,7 @@ router.get("/reservations", async (req, res) => {
 });
 
 /* ================= CREATE PACKAGE RESERVATION ================= */
-router.post("/reservations", async (req, res) => {
+router.post("/reservations", requireAdminPermission("create_reservation"), async (req, res) => {
   try {
     const {
       packageName,
@@ -133,7 +134,7 @@ router.post("/reservations", async (req, res) => {
 });
 
 /* ================= UPDATE PACKAGE RESERVATION STATUS ================= */
-router.put("/reservations/:id/status", async (req, res) => {
+router.put("/reservations/:id/status", requireAdminPermission("reservations"), async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -174,7 +175,7 @@ router.put("/reservations/:id/status", async (req, res) => {
 });
 
 /* ================= HOTEL RESERVATIONS ================= */
-router.get("/hotels/reservations", async (req, res) => {
+router.get("/hotels/reservations", requireAdminPermission("reservations"), async (req, res) => {
   try {
     const { page, limit, offset } = getPagination(req);
     const countResult = await pool.query(`
@@ -237,7 +238,7 @@ router.get("/hotels/reservations", async (req, res) => {
 });
 
 /* ================= CREATE HOTEL RESERVATION ================= */
-router.post("/hotels/reservations", async (req, res) => {
+router.post("/hotels/reservations", requireAdminPermission("create_reservation"), async (req, res) => {
   try {
     const {
       hotelName,
@@ -314,7 +315,7 @@ router.post("/hotels/reservations", async (req, res) => {
 });
 
 /* ================= UPDATE HOTEL RESERVATION STATUS ================= */
-router.put("/hotels/reservations/:id/status", async (req, res) => {
+router.put("/hotels/reservations/:id/status", requireAdminPermission("reservations"), async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -357,3 +358,5 @@ router.put("/hotels/reservations/:id/status", async (req, res) => {
 });
 
 module.exports = router;
+
+

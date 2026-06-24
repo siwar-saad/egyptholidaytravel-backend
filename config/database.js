@@ -1,4 +1,4 @@
-const { Pool } = require("pg");
+﻿const { Pool } = require("pg");
 require("dotenv").config();
 
 const shouldUseSsl =
@@ -20,10 +20,12 @@ const pool = new Pool({
 
 pool.connect((err) => {
   if (err) {
-    console.error("❌ Database connection error:", err.message);
+    console.error("âŒ Database connection error:", err.message);
   } else {
-    console.log("✅ Connected to PostgreSQL database");
+    console.log("\u2705 Connected to PostgreSQL database");
   }
 });
 
 module.exports = pool;
+
+

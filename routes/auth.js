@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const pool = require("../config/database");
@@ -7,6 +7,11 @@ const authMiddleware = require("../middleware/authMiddleware");
 const { getCookie } = require("../utils/cookies");
 const { hashToken } = require("../utils/tokens");
 const { validatePasswordStrength } = require("../utils/passwordPolicy");
+const {
+  DEFAULT_ADMIN_PERMISSIONS,
+  normalizePermissions,
+  isGeneralAdmin,
+} = require("../middleware/adminMiddleware");
 
 const router = express.Router();
 
@@ -88,6 +93,13 @@ const cleanUser = (user) => ({
   id: user.id,
   email: user.email,
   role: user.role || "user",
+  adminType: user.admin_type || user.adminType || null,
+  admin_type: user.admin_type || user.adminType || null,
+  permissions: isGeneralAdmin(user)
+    ? DEFAULT_ADMIN_PERMISSIONS
+    : normalizePermissions(user.permissions),
+  isSuperAdmin: isGeneralAdmin(user),
+  isGeneralAdmin: isGeneralAdmin(user),
   firstName: user.first_name || "",
   lastName: user.last_name || "",
   name: `${user.first_name || ""} ${user.last_name || ""}`.trim(),
@@ -635,9 +647,9 @@ router.post("/login", async (req, res) => {
 
     const result = await pool.query(
       `
-      SELECT id, first_name, last_name, email, phone, city, country, password, role, email_verified
+      SELECT id, first_name, last_name, email, phone, city, country, password, role, admin_type, permissions, email_verified
       FROM users
-      WHERE email = $1
+      WHERE LOWER(email) = LOWER($1)
       `,
       [email]
     );
@@ -654,6 +666,7 @@ router.post("/login", async (req, res) => {
 
     if (user.email_verified === false) {
       return res.status(403).json({
+        code: "EMAIL_NOT_VERIFIED",
         error: "Please verify your email before login",
       });
     }
@@ -829,6 +842,8 @@ router.post("/reset-password", async (req, res) => {
         city,
         country,
         role,
+        admin_type,
+        permissions,
         reset_token
       FROM users
       WHERE email = $1
@@ -889,3 +904,5 @@ router.post("/reset-password", async (req, res) => {
 });
 
 module.exports = router;
+
+

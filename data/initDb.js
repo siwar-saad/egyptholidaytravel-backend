@@ -1,4 +1,4 @@
-const pool = require("../config/database");
+﻿const pool = require("../config/database");
 const destinations = {};
 const packages = [];
 
@@ -17,6 +17,8 @@ const initializeDatabase = async () => {
         country VARCHAR(100) DEFAULT '',
         avatar TEXT,
         role VARCHAR(20) DEFAULT 'user',
+        admin_type VARCHAR(30),
+        permissions JSONB DEFAULT '[]'::jsonb,
         email_verified BOOLEAN DEFAULT true,
         email_verification_code TEXT,
         email_verification_expires TIMESTAMP WITH TIME ZONE,
@@ -148,6 +150,9 @@ const initializeDatabase = async () => {
         name VARCHAR(150) NOT NULL,
         rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
         text TEXT NOT NULL,
+        country VARCHAR(100) DEFAULT '',
+        country_code VARCHAR(2) DEFAULT '',
+        verified BOOLEAN DEFAULT false,
         status VARCHAR(20) DEFAULT 'private',
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
@@ -172,6 +177,8 @@ const initializeDatabase = async () => {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT '';
       ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_type VARCHAR(30);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '[]'::jsonb;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT true;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_code TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_expires TIMESTAMP WITH TIME ZONE;
@@ -271,9 +278,31 @@ const initializeDatabase = async () => {
       ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply TEXT DEFAULT '';
       ALTER TABLE messages ADD COLUMN IF NOT EXISTS replied_at TIMESTAMP WITH TIME ZONE;
 
+      ALTER TABLE reviews ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT '';
+      ALTER TABLE reviews ADD COLUMN IF NOT EXISTS country_code VARCHAR(2) DEFAULT '';
+      ALTER TABLE reviews ADD COLUMN IF NOT EXISTS verified BOOLEAN DEFAULT false;
       ALTER TABLE reviews ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'private';
     `);
 
+    /* ================= INSERT DEFAULT REVIEWS ================= */
+    await pool.query(`
+      INSERT INTO reviews
+        (name, rating, text, country, country_code, verified, status)
+      SELECT seed.name, seed.rating, seed.text, seed.country,
+             seed.country_code, true, 'public'
+      FROM (
+        VALUES
+          ('Sarah M.', 5, 'Everything was perfectly organized. The team made our trip easy, safe, and full of beautiful moments. Highly recommended!', 'Tunisia', 'tn'),
+          ('Emre Y.', 5, 'Great experience! The communication was clear, and every destination was exactly as described. Excellent service.', 'Turkey', 'tr'),
+          ('Laura P.', 5, 'I discovered Egypt in a completely new way. The planning, timing, and professionalism were outstanding.', 'Morocco', 'ma')
+      ) AS seed(name, rating, text, country, country_code)
+      WHERE NOT EXISTS (
+        SELECT 1
+        FROM reviews existing
+        WHERE LOWER(existing.name) = LOWER(seed.name)
+          AND existing.text = seed.text
+      );
+    `);
     /* ================= INSERT DESTINATIONS ================= */
     for (const dest of Object.values(destinations)) {
       await pool.query(
@@ -306,10 +335,10 @@ const initializeDatabase = async () => {
       );
     }
 
-    console.log("✅ Database initialized successfully");
+    console.log("\u2705 Database initialized successfully");
   } catch (error) {
     console.error(
-      "❌ Database initialization error:",
+      "âŒ Database initialization error:",
       error.message
     );
 
@@ -318,3 +347,7 @@ const initializeDatabase = async () => {
 };
 
 module.exports = initializeDatabase;
+
+
+
+
