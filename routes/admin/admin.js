@@ -12,6 +12,7 @@ const reviewRoutes = require("./reviews");
 const subscriberRoutes = require("./subscribers");
 const paymentRoutes = require("./payments");
 const settingRoutes = require("./settings");
+const destinationRoutes = require("./destinations");
 
 const router = express.Router();
 
@@ -21,6 +22,7 @@ router.use(adminMiddleware);
 /* ================= ADMIN MODULES ================= */
 router.use(requireAdminPermission("dashboard"), dashboardRoutes);
 router.use(requireAdminPermission("packages"), packageRoutes);
+router.use(requireAdminPermission("packages"), destinationRoutes);
 router.use(reservationRoutes);
 router.use(requireAdminPermission("hotels"), hotelRoutes);
 router.use(requireAdminPermission("users"), clientRoutes);

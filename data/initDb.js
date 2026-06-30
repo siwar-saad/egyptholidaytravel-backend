@@ -38,10 +38,23 @@ const initializeDatabase = async () => {
       CREATE TABLE IF NOT EXISTS destinations (
         id VARCHAR(50) PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
+        title VARCHAR(255),
         description TEXT,
         region VARCHAR(100),
+        country VARCHAR(100) DEFAULT 'Egypt',
+        badge VARCHAR(255) DEFAULT 'Destination Program',
+        duration VARCHAR(100) DEFAULT '',
+        location VARCHAR(255) DEFAULT '',
         image VARCHAR(255),
-        data JSONB
+        images JSONB DEFAULT '[]'::jsonb,
+        highlights JSONB DEFAULT '[]'::jsonb,
+        included JSONB DEFAULT '[]'::jsonb,
+        days JSONB DEFAULT '[]'::jsonb,
+        visibility VARCHAR(50) DEFAULT 'Published',
+        display_order INTEGER DEFAULT 0,
+        data JSONB DEFAULT '{}'::jsonb,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
@@ -193,6 +206,41 @@ const initializeDatabase = async () => {
       SET email_verified = true
       WHERE email_verified = false
       AND email_verification_code IS NULL;
+
+      ALTER TABLE destinations ADD COLUMN IF NOT EXISTS title VARCHAR(255);
+      ALTER TABLE destinations ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT 'Egypt';
+      ALTER TABLE destinations ADD COLUMN IF NOT EXISTS badge VARCHAR(255) DEFAULT 'Destination Program';
+      ALTER TABLE destinations ADD COLUMN IF NOT EXISTS duration VARCHAR(100) DEFAULT '';
+      ALTER TABLE destinations ADD COLUMN IF NOT EXISTS location VARCHAR(255) DEFAULT '';
+      ALTER TABLE destinations ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::jsonb;
+      ALTER TABLE destinations ADD COLUMN IF NOT EXISTS highlights JSONB DEFAULT '[]'::jsonb;
+      ALTER TABLE destinations ADD COLUMN IF NOT EXISTS included JSONB DEFAULT '[]'::jsonb;
+      ALTER TABLE destinations ADD COLUMN IF NOT EXISTS days JSONB DEFAULT '[]'::jsonb;
+      ALTER TABLE destinations ADD COLUMN IF NOT EXISTS visibility VARCHAR(50) DEFAULT 'Published';
+      ALTER TABLE destinations ADD COLUMN IF NOT EXISTS display_order INTEGER DEFAULT 0;
+      ALTER TABLE destinations ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+      ALTER TABLE destinations ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+
+      UPDATE destinations
+      SET
+        title = COALESCE(NULLIF(title, ''), NULLIF(name, ''), 'Destination'),
+        country = COALESCE(NULLIF(country, ''), data->>'country', data->>'stamp', 'Egypt'),
+        badge = COALESCE(NULLIF(badge, ''), data->>'badge', data->>'tag', 'Destination Program'),
+        duration = COALESCE(NULLIF(duration, ''), data->>'duration', ''),
+        location = COALESCE(NULLIF(location, ''), data->>'location', ''),
+        images = CASE
+          WHEN jsonb_array_length(COALESCE(images, '[]'::jsonb)) > 0 THEN images
+          WHEN COALESCE(image, '') <> '' THEN jsonb_build_array(image)
+          ELSE '[]'::jsonb
+        END,
+        highlights = COALESCE(highlights, '[]'::jsonb),
+        included = COALESCE(included, '[]'::jsonb),
+        days = COALESCE(days, '[]'::jsonb),
+        visibility = COALESCE(NULLIF(visibility, ''), 'Published'),
+        display_order = COALESCE(display_order, 0),
+        data = COALESCE(data, '{}'::jsonb),
+        created_at = COALESCE(created_at, CURRENT_TIMESTAMP),
+        updated_at = COALESCE(updated_at, CURRENT_TIMESTAMP);
 
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS title VARCHAR(255);
       ALTER TABLE packages ADD COLUMN IF NOT EXISTS programme TEXT;

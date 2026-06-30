@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
+const path = require("path");
 require("dotenv").config({ quiet: true });
 
 const pool = require("./config/database");
@@ -14,6 +15,7 @@ const subscriberRoutes = require("./routes/subscribers");
 const hotelReservationRoutes = require("./routes/hotels_reservetion");
 const hotelRoutes = require("./routes/hotels");
 const reviewRoutes = require("./routes/reviews");
+const destinationRoutes = require("./routes/destinations");
 
 /* ================= ENVIRONMENT CHECKS ================= */
 if (!process.env.JWT_SECRET) {
@@ -64,7 +66,7 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
 /* ================= STATIC FILES ================= */
-app.use("/images", express.static("public/images"));
+app.use("/images", express.static(path.join(__dirname, "public/images")));
 
 /* ================= API ROUTES ================= */
 app.use("/api/auth", authRoutes);
@@ -72,6 +74,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/client", clientRoutes);
 app.use("/api/packages", packageRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/destinations", destinationRoutes);
 app.use("/api", subscriberRoutes);
 app.use("/api/hotels_reservation", hotelReservationRoutes);
 app.use("/api/hotels", hotelRoutes);
