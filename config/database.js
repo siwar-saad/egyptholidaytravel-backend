@@ -11,9 +11,16 @@ const pool = new Pool({
   database: process.env.DB_NAME,
   password: String(process.env.DB_PASSWORD),
   port: Number(process.env.DB_PORT),
+
+  max: Number(process.env.DB_POOL_MAX || 10),
+  min: Number(process.env.DB_POOL_MIN || 2),
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000,
+
   ssl: shouldUseSsl
     ? {
-        rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED === "true",
+        rejectUnauthorized:
+          process.env.DB_SSL_REJECT_UNAUTHORIZED === "true",
       }
     : false,
 });
